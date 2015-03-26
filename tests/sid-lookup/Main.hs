@@ -18,6 +18,7 @@ main = do
 printMaybeAcct :: Maybe LookedUpAccount -> IO ()
 printMaybeAcct maybel = case maybel of
   Just l -> do
+    print (lookedUpAccountName l)
     print (lookedUpReferencedDomainName l)
     print (lookedUpUse l)
     s <- convertSidToStringSid (lookedUpSid l)
