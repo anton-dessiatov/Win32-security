@@ -1,0 +1,20 @@
+name:          Win32-security
+version:       1.0
+synopsis:      Haskell bindings to a security-related functions of the Windows API
+license:       MIT
+license-file:  LICENSE
+author:        Anton Dessiatov
+maintainer:    anton.dessiatov@gmail.com
+copyright:     Anton Dessiatov,
+category:      System
+build-type:    Simple
+cabal-version: >=1.16
+homepage:      https://github.com/anton-dessiatov/Win32-security
+bug-reports:   https://github.com/anton-dessiatov/Win32-security/issues
+
+library
+  build-depends:
+      base >= 4 && < 5
+    , Win32-errors >= 0.2.2
+  exposed-modules:
+      System.Win32.Security
