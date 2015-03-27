@@ -28,7 +28,7 @@ library
   exposed-modules:
       System.Win32.Security.AccessControl
       System.Win32.Security.Sid
-      System.Win32.Security.SecurityDescriptor
+      System.Win32.Security.SecurityInfo
   other-modules:
       System.Win32.Security.MarshalText
   hs-source-dirs: src

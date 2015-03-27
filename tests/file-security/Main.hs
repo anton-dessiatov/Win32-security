@@ -5,7 +5,7 @@ import Data.Bits
 import Data.Maybe
 import System.Environment
 import System.Win32.Security.AccessControl
-import System.Win32.Security.SecurityDescriptor
+import System.Win32.Security.SecurityInfo
 import System.Win32.Security.Sid
 import qualified Data.Text as T
 import qualified Data.Traversable as T

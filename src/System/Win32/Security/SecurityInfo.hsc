@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving, OverloadedStrings, RankNTypes #-}
-module System.Win32.Security.SecurityDescriptor
+module System.Win32.Security.SecurityInfo
   ( SecurityDescriptor
 
   , SecurityObjectType
