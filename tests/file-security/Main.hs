@@ -3,6 +3,7 @@ module Main (main) where
 import Control.Monad (join)
 import Data.Bits
 import System.Environment
+import System.Win32.Security.AccessControl
 import System.Win32.Security.SecurityDescriptor
 import System.Win32.Security.Sid
 import qualified Data.Text as T
@@ -13,7 +14,8 @@ main = do
   args <- getArgs
   case args of
     fileName:[] ->
-      getNamedSecurityInfo (T.pack fileName) securityObjectFile (securityInformationOwner .|. securityInformationGroup)
+      getNamedSecurityInfo (T.pack fileName) securityObjectFile
+        (securityInformationOwner .|. securityInformationGroup .|. securityInformationDacl)
         >>= printSecurityInfo
     _ ->
       putStrLn "1 argument with a file name is expected"
@@ -26,6 +28,11 @@ printSecurityInfo gsir = do
   putStrLn "Group:"
   maybeGroupAcct <- T.forM (securityInfoGroup gsir) $ lookupAccountSid Nothing
   printMaybeAcct $ join maybeGroupAcct
+  putStrLn "DACL:"
+  let dacl = securityInfoDacl gsir
+  case dacl of
+    Just x  -> printAcl x
+    Nothing -> putStrLn "Missing"
 
 printMaybeAcct :: Maybe LookedUpAccount -> IO ()
 printMaybeAcct maybel = case maybel of
@@ -37,4 +44,25 @@ printMaybeAcct maybel = case maybel of
     print s
   Nothing ->
     putStrLn "Unknown"
+
+printAcl :: Acl -> IO ()
+printAcl acl = do
+    putStrLn $ concat [ "ACL Entries count: ", show $ aclEntriesCount acl ]
+    mapM_ printAce $ aclToList acl
+  where
+    printAce ace = case ace of
+      AceAccessAllowed ga -> do
+        putStrLn "ACCESS_ALLOWED_ACE"
+        printGenericAce ga
+      AceAccessDenied ga -> do
+        putStrLn "ACCESS_DENIED_ACE"
+        printGenericAce ga
+    printGenericAce ga = do
+      putStrLn $ concat [ "ACE Flags: ", show $ genericAceFlags ga ]
+      putStrLn $ concat [ "ACE AccessMask: ", show $ genericAceAccessMask ga ]
+      sidString <- convertSidToStringSid $ genericAceSid ga
+      putStrLn $ concat [ "ACE Sid: ", show sidString ]
+      putStrLn "Sid lookup: "
+      sidLookup <- lookupAccountSid Nothing $ genericAceSid ga
+      printMaybeAcct sidLookup
 

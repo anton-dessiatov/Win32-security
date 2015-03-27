@@ -31,6 +31,7 @@ import Foreign
 import System.Win32.Types
 import System.Win32.Security
 import System.Win32.Security.Sid
+import System.Win32.Security.AccessControl
 import qualified Data.Text as T
 import qualified System.Win32.Error.Foreign as E
 import qualified System.Win32.Security.MarshalText as T
@@ -88,8 +89,6 @@ foreign import WINDOWS_CCONV unsafe "windows.h GetNamedSecurityInfoW"
     -> Ptr PACL -- ppSacl
     -> Ptr (Ptr SECURITY_DESCRIPTOR) -- ppSecurityDescriptor
     -> IO DWORD
-
-newtype Acl = Acl { withAclPtr :: forall a. (PACL -> IO a) -> IO a }
 
 data GetSecurityInfoResult = GetSecurityInfoResult
   { securityInfoOwner      :: Maybe Sid

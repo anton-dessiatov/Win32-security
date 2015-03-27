@@ -26,6 +26,7 @@ library
     , Win32 >= 2
     , Win32-errors >= 0.2.1
   exposed-modules:
+      System.Win32.Security.AccessControl
       System.Win32.Security.Sid
       System.Win32.Security.SecurityDescriptor
   other-modules:
