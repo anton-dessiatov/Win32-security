@@ -25,6 +25,7 @@ module System.Win32.Security.SecurityDescriptor
 
   , GetSecurityInfoResult (..)
   , getNamedSecurityInfo
+  , setNamedSecurityInfo
   ) where
 
 import Foreign
@@ -79,7 +80,7 @@ securityInformationAll = SecurityInformation $
   dACL_SECURITY_INFORMATION .|. sACL_SECURITY_INFORMATION
 
 foreign import WINDOWS_CCONV unsafe "windows.h GetNamedSecurityInfoW"
-  c_getNamedSecurityInfoW
+  c_GetNamedSecurityInfoW
     :: LPWSTR -- pObjectName
     -> BYTE -- ObjectType
     -> DWORD -- SecurityInformation
@@ -107,7 +108,7 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
   alloca $ \ppSacl ->
   alloca $ \ppSecurityDescriptor -> do
     E.failUnlessSuccess "GetNamedSecurityInfoW" $
-      c_getNamedSecurityInfoW pObjectName objectType securityInfo ppSidOwner ppSidGroup ppDacl ppSacl ppSecurityDescriptor
+      c_GetNamedSecurityInfoW pObjectName objectType securityInfo ppSidOwner ppSidGroup ppDacl ppSacl ppSecurityDescriptor
     sdPtr <- peek ppSecurityDescriptor
     sd <- newForeignPtr localFreeFinaliser sdPtr
     ownerSid <- if securityInfo .&. oWNER_SECURITY_INFORMATION /= 0
@@ -145,3 +146,29 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
 {-# CFILES cbits/Win32Security.c #-}
 foreign import ccall "Win32Security.h &LocalFreeFinaliser"
   localFreeFinaliser :: FunPtr (Ptr a -> IO ())
+
+setNamedSecurityInfo :: T.Text -> SecurityObjectType -> Maybe Sid -> Maybe Sid -> Maybe Acl -> Maybe Acl -> IO ()
+setNamedSecurityInfo objectName (SecurityObjectType objectType) maybeOwner maybeGroup maybeDacl maybeSacl =
+  T.useAsPtr0 objectName $ \pObjectName ->
+  maybe ($ nullPtr) withSidPtr maybeOwner $ \psidOwner ->
+  maybe ($ nullPtr) withSidPtr maybeGroup $ \psidGroup ->
+  maybe ($ nullPtr) withAclPtr maybeDacl $ \pDacl ->
+  maybe ($ nullPtr) withAclPtr maybeSacl $ \pSacl ->
+    let securityInfo = 0
+          .|. if psidOwner /= nullPtr then oWNER_SECURITY_INFORMATION else 0
+          .|. if psidGroup /= nullPtr then gROUP_SECURITY_INFORMATION else  0
+          .|. if pDacl /= nullPtr then dACL_SECURITY_INFORMATION else  0
+          .|. if pSacl /= nullPtr then sACL_SECURITY_INFORMATION else  0
+    in E.failUnlessSuccess "SetNamedSecurityInfoW" $
+         c_SetNamedSecurityInfoW pObjectName objectType securityInfo psidOwner psidGroup pDacl pSacl
+
+foreign import WINDOWS_CCONV "windows.h SetNamedSecurityInfoW"
+  c_SetNamedSecurityInfoW
+    :: LPWSTR -- pObjectName
+    -> BYTE -- ObjectType
+    -> DWORD -- SecurityInfo
+    -> PSID -- psidOwner
+    -> PSID -- psidGroup
+    -> PACL -- pDacl
+    -> PACL -- pSacl
+    -> IO DWORD

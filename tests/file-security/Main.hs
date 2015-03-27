@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Monad (join)
 import Data.Bits
+import Data.Maybe
 import System.Environment
 import System.Win32.Security.AccessControl
 import System.Win32.Security.SecurityDescriptor
@@ -13,12 +14,24 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    fileName:[] ->
-      getNamedSecurityInfo (T.pack fileName) securityObjectFile
-        (securityInformationOwner .|. securityInformationGroup .|. securityInformationDacl)
-        >>= printSecurityInfo
-    _ ->
-      putStrLn "1 argument with a file name is expected"
+    act:fileName:[] -> performAction act fileName
+    _ -> putStrLn "2 arguments are expected: action (either \"read\" or \"modify\") and a file name"
+
+performAction :: String -> FilePath -> IO ()
+performAction "read" fileName = do
+  sinfo <- getNamedSecurityInfo (T.pack fileName) securityObjectFile
+    (securityInformationOwner .|. securityInformationGroup .|. securityInformationDacl)
+  printSecurityInfo sinfo
+performAction "modify" fileName = do
+  let textFileName = T.pack fileName
+  sinfo <- getNamedSecurityInfo textFileName securityObjectFile securityInformationDacl
+  let oldDacl = fromJust $ securityInfoDacl sinfo
+      newDacl = aclFromList . tail $ aclToList oldDacl
+  putStrLn "Old DACL was:"
+  printAcl oldDacl
+  putStrLn "New DACL will be:"
+  printAcl newDacl
+  setNamedSecurityInfo textFileName securityObjectFile Nothing Nothing (Just newDacl) Nothing
 
 printSecurityInfo :: GetSecurityInfoResult -> IO ()
 printSecurityInfo gsir = do

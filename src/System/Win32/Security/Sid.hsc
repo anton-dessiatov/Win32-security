@@ -19,6 +19,8 @@ module System.Win32.Security.Sid
   , LookedUpAccount (..)
 
   -- * Functions
+  , isValidSid
+  , getLengthSid
   , lookupAccountName
   , lookupAccountSid
   , convertSidToStringSid
@@ -26,6 +28,7 @@ module System.Win32.Security.Sid
 
 import Foreign
 import Foreign.C
+import System.IO.Unsafe
 import System.Win32.Security
 import System.Win32.Types
 import qualified Data.Text as T
@@ -58,6 +61,25 @@ foreign import WINDOWS_CCONV unsafe "windows.h ConvertSidToStringSidW"
     :: PSID
     -> Ptr LPWSTR
     -> IO BOOL
+
+-- | Checks the given SID for a validity. Return False if revision number is outside a known range
+-- or if the number of subauthorities is more that maximum.
+isValidSid :: Sid -> Bool
+isValidSid sid = unsafePerformIO $ withSidPtr sid c_IsValidSid
+
+foreign import WINDOWS_CCONV unsafe "windows.h IsValidSid"
+  c_IsValidSid
+    :: PSID
+    -> IO BOOL
+
+-- | Gets the length, in bytes, of given valid Sid. If Sid is not valid, the return value is undefined.
+getLengthSid :: Sid -> Int
+getLengthSid sid = fromIntegral . unsafePerformIO $ withSidPtr sid c_GetLengthSid
+
+foreign import WINDOWS_CCONV unsafe "windows.h GetLengthSid"
+  c_GetLengthSid
+    :: PSID
+    -> IO DWORD
 
 newtype SID_NAME_USE = SID_NAME_USE { sidNameUseValue :: #{type SID_NAME_USE} }
   deriving (Eq)
