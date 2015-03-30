@@ -31,7 +31,7 @@ performAction "modify" fileName = do
   printAcl oldDacl
   putStrLn "New DACL will be:"
   printAcl newDacl
-  setNamedSecurityInfo textFileName securityObjectFile Nothing Nothing (Just newDacl) Nothing
+  setNamedSecurityInfo textFileName securityObjectFile Nothing Nothing (UnprotectedAcl newDacl) DontSetAcl
 
 printSecurityInfo :: GetSecurityInfoResult -> IO ()
 printSecurityInfo gsir = do

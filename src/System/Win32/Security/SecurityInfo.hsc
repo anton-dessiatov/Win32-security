@@ -25,6 +25,7 @@ module System.Win32.Security.SecurityInfo
 
   , GetSecurityInfoResult (..)
   , getNamedSecurityInfo
+  , SetSecurityInfoAcl (..)
   , setNamedSecurityInfo
   ) where
 
@@ -147,20 +148,39 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
 foreign import ccall "Win32Security.h &LocalFreeFinaliser"
   localFreeFinaliser :: FunPtr (Ptr a -> IO ())
 
-setNamedSecurityInfo :: T.Text -> SecurityObjectType -> Maybe Sid -> Maybe Sid -> Maybe Acl -> Maybe Acl -> IO ()
-setNamedSecurityInfo objectName (SecurityObjectType objectType) maybeOwner maybeGroup maybeDacl maybeSacl =
-  T.useAsPtr0 objectName $ \pObjectName ->
-  maybe ($ nullPtr) withSidPtr maybeOwner $ \psidOwner ->
-  maybe ($ nullPtr) withSidPtr maybeGroup $ \psidGroup ->
-  maybe ($ nullPtr) withAclPtr maybeDacl $ \pDacl ->
-  maybe ($ nullPtr) withAclPtr maybeSacl $ \pSacl ->
-    let securityInfo = 0
-          .|. if psidOwner /= nullPtr then oWNER_SECURITY_INFORMATION else 0
-          .|. if psidGroup /= nullPtr then gROUP_SECURITY_INFORMATION else  0
-          .|. if pDacl /= nullPtr then dACL_SECURITY_INFORMATION else  0
-          .|. if pSacl /= nullPtr then sACL_SECURITY_INFORMATION else  0
-    in E.failUnlessSuccess "SetNamedSecurityInfoW" $
-         c_SetNamedSecurityInfoW pObjectName objectType securityInfo psidOwner psidGroup pDacl pSacl
+data SetSecurityInfoAcl
+  = DontSetAcl
+  -- | Set ACL and prevent inheritable ACEs from propagating
+  | ProtectedAcl Acl
+  -- | Set ACL and allow inheritable ACEs to propagate
+  | UnprotectedAcl Acl
+
+setNamedSecurityInfo :: T.Text -> SecurityObjectType -> Maybe Sid -> Maybe Sid -> SetSecurityInfoAcl -> SetSecurityInfoAcl -> IO ()
+setNamedSecurityInfo objectName (SecurityObjectType objectType) maybeOwner maybeGroup ssiDacl ssiSacl =
+    T.useAsPtr0 objectName $ \pObjectName ->
+    maybe ($ nullPtr) withSidPtr maybeOwner $ \psidOwner ->
+    maybe ($ nullPtr) withSidPtr maybeGroup $ \psidGroup ->
+    withSecurityInfoAcl ssiDacl $ \pDacl ->
+    withSecurityInfoAcl ssiSacl $ \pSacl ->
+      let securityInfo = 0
+            .|. if psidOwner /= nullPtr then oWNER_SECURITY_INFORMATION else 0
+            .|. if psidGroup /= nullPtr then gROUP_SECURITY_INFORMATION else  0
+            .|. case ssiDacl of
+                  DontSetAcl -> 0
+                  ProtectedAcl _ -> dACL_SECURITY_INFORMATION .|. #{const PROTECTED_DACL_SECURITY_INFORMATION}
+                  UnprotectedAcl _ -> dACL_SECURITY_INFORMATION
+            .|. case ssiSacl of
+                  DontSetAcl -> 0
+                  ProtectedAcl _ -> sACL_SECURITY_INFORMATION .|. #{const PROTECTED_SACL_SECURITY_INFORMATION}
+                  UnprotectedAcl _ -> sACL_SECURITY_INFORMATION
+      in E.failUnlessSuccess "SetNamedSecurityInfoW" $
+           c_SetNamedSecurityInfoW pObjectName objectType securityInfo psidOwner psidGroup pDacl pSacl
+  where
+    withSecurityInfoAcl :: SetSecurityInfoAcl -> (Ptr ACL -> IO a) -> IO a
+    withSecurityInfoAcl ssia act = case ssia of
+      DontSetAcl -> act $ nullPtr
+      ProtectedAcl x -> withAclPtr x act
+      UnprotectedAcl x -> withAclPtr x act
 
 foreign import WINDOWS_CCONV "windows.h SetNamedSecurityInfoW"
   c_SetNamedSecurityInfoW
