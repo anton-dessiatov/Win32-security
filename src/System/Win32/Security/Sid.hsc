@@ -24,11 +24,16 @@ module System.Win32.Security.Sid
   , lookupAccountName
   , lookupAccountSid
   , convertSidToStringSid
+
+  , getProcessUserSid
+  , getCurrentProcess
   ) where
 
+import Data.Maybe (fromJust)
 import Foreign
 import Foreign.C
 import System.IO.Unsafe
+import System.Win32.Process
 import System.Win32.Security
 import System.Win32.Types
 import qualified Data.Text as T
@@ -215,3 +220,62 @@ foreign import WINDOWS_CCONV unsafe "windows.h LookupAccountSidW"
     -> LPDWORD -- cchReferencedDomainName
     -> PSID_NAME_USE -- peUse
     -> IO BOOL
+
+openProcessToken :: ProcessHandle -> IO HANDLE
+openProcessToken handle = alloca $ \pToken -> do
+  E.failIfFalse_ "OpenProcessToken" $ c_OpenProcessToken handle #{const TOKEN_QUERY} pToken
+  peek pToken
+
+foreign import WINDOWS_CCONV unsafe "windows.h OpenProcessToken"
+  c_OpenProcessToken
+    :: HANDLE -- ProcessHandle
+    -> DWORD -- DesiredAccess
+    -> Ptr HANDLE -- TokenHandle
+    -> IO BOOL
+
+getProcessUserSid :: ProcessHandle -> IO Sid
+getProcessUserSid handle = do
+    token <- openProcessToken handle
+    go token Nothing 0
+  where
+    go handle maybeBuf bufSize =
+      with 0 $ \pReturnLength ->
+      maybe ($ nullPtr) withForeignPtr maybeBuf $ \pBuf -> do
+      ret <- c_GetTokenInformation handle #{const TokenUser} pBuf bufSize pReturnLength
+      if ret
+        then unmarshalAndReturn (fromJust maybeBuf)
+        else do
+          errValue <- getLastError
+          case errValue of
+            #{const ERROR_INSUFFICIENT_BUFFER} -> do
+              properBufferSize <- peek pReturnLength
+              newBuffer <- mallocForeignPtrBytes $ fromIntegral properBufferSize
+              go handle (Just newBuffer) properBufferSize
+            x ->
+              E.failWith "GetTokenInformation" $ E.fromDWORD x
+    unmarshalAndReturn buf = return $ Sid $ \act -> withForeignPtr buf $ \pBuf -> do
+      pSid <- peek $ pBuf `plusPtr` #{offset TOKEN_USER, User} `plusPtr` #{offset SID_AND_ATTRIBUTES, Sid}
+      act pSid
+
+{-# CFILES cbits/HsWin32.c #-}
+foreign import ccall "HsWin32.h &CloseHandleFinaliser"
+    c_CloseHandleFinaliser :: FunPtr (Ptr a -> IO ())
+
+foreign import WINDOWS_CCONV unsafe "windows.h GetTokenInformation"
+  c_GetTokenInformation
+    :: HANDLE -- TokenHandle
+    -> BYTE -- TokenInformationClass
+    -> Ptr () -- TokenInformation
+    -> DWORD -- TokenInformationLength
+    -> LPDWORD -- ReturnLength
+    -> IO BOOL
+
+-- | Wrapper for API GetCurrentProcess() function. This would look better in a
+-- System.Win32.Process module, but that one is located in win32 package, which
+-- is rather hard to change.
+getCurrentProcess :: IO ProcessHandle
+getCurrentProcess = c_GetCurrentProcess
+
+foreign import WINDOWS_CCONV unsafe "window.h GetCurrentProcess"
+  c_GetCurrentProcess
+    :: IO HANDLE
