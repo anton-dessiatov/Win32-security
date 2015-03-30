@@ -10,7 +10,6 @@ module System.Win32.Security.AccessControl
   , aceFlagNoPropagateInherit
   , aceFlagObjectInherit
   , aceFlagSuccessfulAccess
-  , AccessMask (..)
   , Ace (..)
   , GenericAce (..)
   , aclToList
@@ -24,6 +23,7 @@ import Foreign
 -- I have to use GHC internal ForeignPtr module because that one exports mallocForeignPtrAlignedBytes
 -- function, and I have to make ACL buffers DWORD-aligned.
 import GHC.ForeignPtr
+import System.Win32.File
 import System.Win32.Security
 import System.Win32.Security.Sid
 import System.Win32.Types
@@ -53,9 +53,6 @@ newtype AceFlags = AceFlags { aceFlagsGetValue :: BYTE }
  , aceFlagSuccessfulAccess   = SUCCESSFUL_ACCESS_ACE_FLAG
  }
 
-newtype AccessMask = AccessMask { accessMaskGetValue :: DWORD }
-  deriving (Eq, Bits, Show)
-
 -- | Not all ACE types are currently supported. Exotic ones like ACCESS_ALLOWED_CALLBACK_OBJECT_ACE are
 -- not implemented. Feel free to contact me if you REALLY need it.
 data Ace
@@ -65,7 +62,7 @@ data Ace
 
 data GenericAce = GenericAce
   { genericAceFlags      :: AceFlags
-  , genericAceAccessMask :: AccessMask
+  , genericAceAccessMask :: AccessMode
   , genericAceSid        :: Sid
   }
 
@@ -96,7 +93,7 @@ aclToList acl = reverse . unsafePerformIO $ go [] (aclEntriesCount acl) #{size A
       -- All this black magic is to avoid copying the SID and instead refer to it using a
       -- withAclPtr function (to prevent it from being consumed by GC)
       let sid = Sid $ \act -> withAclPtr acl $ \pAcl -> act (pAcl `plusPtr` currentOffset `plusPtr` #{offset ACCESS_ALLOWED_ACE, SidStart})
-      return $ GenericAce flags (AccessMask mask) sid
+      return $ GenericAce flags mask sid
 
 -- | Calculates amount of memory required by a given ACE
 aceSize :: Ace -> Int
@@ -120,7 +117,7 @@ serializeAce ace dest = do
     serializeGenericAce :: GenericAce -> IO ()
     serializeGenericAce ga = do
       #{poke ACE_HEADER, AceFlags} dest (aceFlagsGetValue $ genericAceFlags ga)
-      #{poke ACCESS_ALLOWED_ACE, Mask} dest (accessMaskGetValue $ genericAceAccessMask ga)
+      #{poke ACCESS_ALLOWED_ACE, Mask} dest $ genericAceAccessMask ga
       let sid = genericAceSid ga
           sidLength = getLengthSid sid
           aceSidPtr = dest `plusPtr` #{offset ACCESS_ALLOWED_ACE, SidStart}
