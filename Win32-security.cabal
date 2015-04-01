@@ -5,12 +5,15 @@ license:          MIT
 license-file:     LICENSE
 author:           Anton Dessiatov
 maintainer:       anton.dessiatov@gmail.com
-copyright:        Anton Dessiatov,
+copyright:        Anton Dessiatov, 2015
 category:         System
 build-type:       Simple
 cabal-version:    >=1.16
 homepage:         https://github.com/anton-dessiatov/Win32-security
 bug-reports:      https://github.com/anton-dessiatov/Win32-security/issues
+description:
+    This package contains bindings for security-related functions of the Windows API.
+    Its main features are account name/SID lookup and editing securable objects access control lists.
 
 Flag build-tests
     Description:
