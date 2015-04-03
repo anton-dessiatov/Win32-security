@@ -35,6 +35,7 @@ import System.Win32.Security
 import System.Win32.Security.Sid
 import System.Win32.Security.AccessControl
 import qualified Data.Text as T
+import qualified System.Win32.Error as E -- documentation comments
 import qualified System.Win32.Error.Foreign as E
 import qualified System.Win32.Security.MarshalText as T
 
@@ -100,7 +101,11 @@ data GetSecurityInfoResult = GetSecurityInfoResult
   , securityInfoDescriptor :: SecurityDescriptor
   }
 
-getNamedSecurityInfo :: T.Text -> SecurityObjectType -> SecurityInformation -> IO GetSecurityInfoResult
+getNamedSecurityInfo :: T.Text -> SecurityObjectType -> SecurityInformation
+    -> IO GetSecurityInfoResult
+    -- ^ This function will throw a 'E.Win32Exception' exception when the
+    -- internal Win32 call returns an error condition. Microsoft's
+    -- documentation does not list which errors are likely to occur.
 getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInformation securityInfo) =
   T.useAsPtr0 objectName $ \pObjectName ->
   alloca $ \ppSidOwner ->
