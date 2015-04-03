@@ -144,9 +144,9 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
       , securityInfoDescriptor = SecurityDescriptor sd
       }
 
-{-# CFILES cbits/Win32Security.c #-}
 foreign import ccall "Win32Security.h &LocalFreeFinaliser"
   localFreeFinaliser :: FunPtr (Ptr a -> IO ())
+{-# CFILES cbits/Win32Security.c #-}
 
 data SetSecurityInfoAcl
   = DontSetAcl
@@ -182,6 +182,16 @@ setNamedSecurityInfo objectName (SecurityObjectType objectType) maybeOwner maybe
       ProtectedAcl x -> withAclPtr x act
       UnprotectedAcl x -> withAclPtr x act
 
+-- | Official prototype:
+-- DWORD WINAPI SetNamedSecurityInfo(
+--   _In_      LPTSTR pObjectName,
+--   _In_      SE_OBJECT_TYPE ObjectType,
+--   _In_      SECURITY_INFORMATION SecurityInfo,
+--   _In_opt_  PSID psidOwner,
+--   _In_opt_  PSID psidGroup,
+--   _In_opt_  PACL pDacl,
+--   _In_opt_  PACL pSacl
+-- );
 foreign import WINDOWS_CCONV "windows.h SetNamedSecurityInfoW"
   c_SetNamedSecurityInfoW
     :: LPWSTR -- pObjectName

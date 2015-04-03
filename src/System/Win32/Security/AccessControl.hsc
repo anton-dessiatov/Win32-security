@@ -142,6 +142,12 @@ aclFromList aces =
         acesAndSizes
     return $ Acl $ withForeignPtr aclData
 
+-- | Official prototype:
+-- BOOL WINAPI InitializeAcl(
+--   _Out_  PACL pAcl,
+--   _In_   DWORD nAclLength,
+--   _In_   DWORD dwAclRevision
+-- );
 foreign import WINDOWS_CCONV unsafe "windows.h InitializeAcl"
   c_InitializeAcl
     :: PACL -- pAcl
