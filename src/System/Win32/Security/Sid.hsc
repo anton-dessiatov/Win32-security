@@ -258,7 +258,7 @@ getProcessUserSid handle = do
       act pSid
 
 {-# CFILES cbits/HsWin32.c #-}
-foreign import ccall "HsWin32.h &CloseHandleFinaliser"
+foreign import ccall "HsWin32.h &HS_Win32Security_CloseHandleFinaliser"
     c_CloseHandleFinaliser :: FunPtr (Ptr a -> IO ())
 
 foreign import WINDOWS_CCONV unsafe "windows.h GetTokenInformation"

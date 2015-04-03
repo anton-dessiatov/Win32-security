@@ -1,9 +1,9 @@
 #include "Win32Security.h"
 
-void LocalFreeFinaliser(void* p) {
+void HS_Win32Security_LocalFreeFinaliser(void* p) {
   LocalFree(p);
 }
 
-void CloseHandleFinaliser(HANDLE h) {
+void HS_Win32Security_CloseHandleFinaliser(HANDLE h) {
   CloseHandle(h);
 }

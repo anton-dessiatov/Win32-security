@@ -3,7 +3,7 @@
 
 #include <windows.h>
 
-void LocalFreeFinaliser(void* p);
-void CloseHandleFinaliser(HANDLE h);
+void HS_Win32Security_LocalFreeFinaliser(void* p);
+void HS_Win32Security_CloseHandleFinaliser(HANDLE h);
 
 #endif // __HS_WIN32SECURITY_H

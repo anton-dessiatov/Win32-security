@@ -149,9 +149,9 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
       , securityInfoDescriptor = SecurityDescriptor sd
       }
 
-foreign import ccall "Win32Security.h &LocalFreeFinaliser"
-  localFreeFinaliser :: FunPtr (Ptr a -> IO ())
 {-# CFILES cbits/Win32Security.c #-}
+foreign import ccall "Win32Security.h &HS_Win32Security_LocalFreeFinaliser"
+  localFreeFinaliser :: FunPtr (Ptr a -> IO ())
 
 data SetSecurityInfoAcl
   = DontSetAcl
