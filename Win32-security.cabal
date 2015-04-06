@@ -1,5 +1,5 @@
 name:             Win32-security
-version:          0.1
+version:          0.1.1
 synopsis:         Haskell bindings to a security-related functions of the Windows API
 license:          MIT
 license-file:     LICENSE
