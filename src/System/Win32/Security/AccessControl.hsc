@@ -28,6 +28,7 @@ import System.Win32.Security
 import System.Win32.Security.Sid
 import System.Win32.Types
 import System.IO.Unsafe
+import qualified System.Win32.Error as E -- documentation comments
 import qualified System.Win32.Error.Foreign as E
 
 #include <windows.h>
@@ -124,9 +125,13 @@ serializeAce ace dest = do
       withSidPtr sid $ \pSid ->
         copyBytes aceSidPtr pSid sidLength
 
--- | Creates an Acl from a list of access control entries. ACL revision is assumed to be ACL_REVISION because
--- ACL_REVISION_DS is not supported yet.
-aclFromList :: [Ace] -> Acl
+-- | Creates an Acl from a list of access control entries. ACL revision is
+-- assumed to be ACL_REVISION because ACL_REVISION_DS is not supported yet.
+aclFromList :: [Ace]
+    -> Acl
+    -- ^ This function will throw a 'E.Win32Exception' exception when the
+    -- internal Win32 call returns an error condition. Microsoft's
+    -- documentation does not list which errors are likely to occur.
 aclFromList aces =
   let acesAndSizes = map (\ace -> (ace, aceSize ace)) aces
       aclSize = #{size ACL} + (sum $ map snd acesAndSizes)
@@ -142,6 +147,12 @@ aclFromList aces =
         acesAndSizes
     return $ Acl $ withForeignPtr aclData
 
+-- | Official prototype:
+-- BOOL WINAPI InitializeAcl(
+--   _Out_  PACL pAcl,
+--   _In_   DWORD nAclLength,
+--   _In_   DWORD dwAclRevision
+-- );
 foreign import WINDOWS_CCONV unsafe "windows.h InitializeAcl"
   c_InitializeAcl
     :: PACL -- pAcl

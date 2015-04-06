@@ -35,6 +35,7 @@ import System.Win32.Security
 import System.Win32.Security.Sid
 import System.Win32.Security.AccessControl
 import qualified Data.Text as T
+import qualified System.Win32.Error as E -- documentation comments
 import qualified System.Win32.Error.Foreign as E
 import qualified System.Win32.Security.MarshalText as T
 
@@ -100,7 +101,11 @@ data GetSecurityInfoResult = GetSecurityInfoResult
   , securityInfoDescriptor :: SecurityDescriptor
   }
 
-getNamedSecurityInfo :: T.Text -> SecurityObjectType -> SecurityInformation -> IO GetSecurityInfoResult
+getNamedSecurityInfo :: T.Text -> SecurityObjectType -> SecurityInformation
+    -> IO GetSecurityInfoResult
+    -- ^ This function will throw a 'E.Win32Exception' exception when the
+    -- internal Win32 call returns an error condition. Microsoft's
+    -- documentation does not list which errors are likely to occur.
 getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInformation securityInfo) =
   T.useAsPtr0 objectName $ \pObjectName ->
   alloca $ \ppSidOwner ->
@@ -144,9 +149,9 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
       , securityInfoDescriptor = SecurityDescriptor sd
       }
 
-{-# CFILES cbits/Win32Security.c #-}
 foreign import ccall "Win32Security.h &LocalFreeFinaliser"
   localFreeFinaliser :: FunPtr (Ptr a -> IO ())
+{-# CFILES cbits/Win32Security.c #-}
 
 data SetSecurityInfoAcl
   = DontSetAcl
@@ -182,6 +187,16 @@ setNamedSecurityInfo objectName (SecurityObjectType objectType) maybeOwner maybe
       ProtectedAcl x -> withAclPtr x act
       UnprotectedAcl x -> withAclPtr x act
 
+-- | Official prototype:
+-- DWORD WINAPI SetNamedSecurityInfo(
+--   _In_      LPTSTR pObjectName,
+--   _In_      SE_OBJECT_TYPE ObjectType,
+--   _In_      SECURITY_INFORMATION SecurityInfo,
+--   _In_opt_  PSID psidOwner,
+--   _In_opt_  PSID psidGroup,
+--   _In_opt_  PACL pDacl,
+--   _In_opt_  PACL pSacl
+-- );
 foreign import WINDOWS_CCONV "windows.h SetNamedSecurityInfoW"
   c_SetNamedSecurityInfoW
     :: LPWSTR -- pObjectName
