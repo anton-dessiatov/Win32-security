@@ -6,6 +6,7 @@ import Data.Bits
 import Foreign
 import Foreign.C.Types
 import System.Win32.Types
+import System.Win32.Cryptography.Types
 import System.Win32.Security.Helpers
 import Text.Printf
 
@@ -13,6 +14,7 @@ import Text.Printf
 #include <windows.h>
 #include <Security.h>
 #include <Credssp.h>
+#include <schannel.h>
 
 data CredHandle
 
@@ -412,6 +414,20 @@ pattern ASC_REQ_REPLAY_DETECT = AscContextReq #{const ASC_REQ_REPLAY_DETECT}
 pattern ASC_REQ_SEQUENCE_DETECT = AscContextReq #{const ASC_REQ_SEQUENCE_DETECT}
 pattern ASC_REQ_STREAM = AscContextReq #{const ASC_REQ_STREAM}
 
+ascContextReqNames :: [(AscContextReq, String)]
+ascContextReqNames =
+  [ (ASC_REQ_ALLOCATE_MEMORY, "ASC_REQ_ALLOCATE_MEMORY")
+  , (ASC_REQ_CONNECTION, "ASC_REQ_CONNECTION")
+  , (ASC_REQ_DELEGATE, "ASC_REQ_DELEGATE")
+  , (ASC_REQ_EXTENDED_ERROR, "ASC_REQ_EXTENDED_ERROR")
+  , (ASC_REQ_REPLAY_DETECT, "ASC_REQ_REPLAY_DETECT")
+  , (ASC_REQ_SEQUENCE_DETECT, "ASC_REQ_SEQUENCE_DETECT")
+  , (ASC_REQ_STREAM, "ASC_REQ_STREAM")
+  ]
+
+instance Show AscContextReq where
+  show x = printf "AscContextReq{ %s }" (parseBitFlags ascContextReqNames unAscContextReq x)
+
 newtype AscRetContextAttr = AscRetContextAttr { unAscRetContextAttr :: CULong }
   deriving (Bits, Eq)
 
@@ -670,3 +686,127 @@ foreign import WINDOWS_CCONV "windows.h EnumerateSecurityPackagesW"
     :: Ptr CULong -- pcPackages
     -> Ptr PSecPkgInfoRaw -- ppPackageInfo
     -> IO SecurityStatus
+
+data HMAPPER
+
+newtype SChannelProt = SChannelProt { unSChannelProt :: DWORD }
+  deriving (Eq, Bits, Storable)
+
+pattern SP_PROT_PCT1_SERVER = SChannelProt 0x00000001
+pattern SP_PROT_PCT1_CLIENT = SChannelProt 0x00000002
+pattern SP_PROT_SSL2_SERVER = SChannelProt 0x00000004
+pattern SP_PROT_SSL2_CLIENT = SChannelProt 0x00000008
+pattern SP_PROT_SSL3_SERVER = SChannelProt 0x00000010
+pattern SP_PROT_SSL3_CLIENT = SChannelProt 0x00000020
+pattern SP_PROT_TLS1_SERVER = SChannelProt 0x00000040
+pattern SP_PROT_TLS1_CLIENT = SChannelProt 0x00000080
+pattern SP_PROT_TLS1_1_SERVER = SChannelProt 0x00000100
+pattern SP_PROT_TLS1_1_CLIENT = SChannelProt 0x00000200
+pattern SP_PROT_TLS1_2_SERVER = SChannelProt 0x00000400
+pattern SP_PROT_TLS1_2_CLIENT = SChannelProt 0x00000800
+
+sChannelProtNames :: [(SChannelProt, String)]
+sChannelProtNames =
+  [ (SP_PROT_PCT1_SERVER, "SP_PROT_PCT1_SERVER")
+  , (SP_PROT_PCT1_CLIENT, "SP_PROT_PCT1_CLIENT")
+  , (SP_PROT_SSL2_SERVER, "SP_PROT_SSL2_SERVER")
+  , (SP_PROT_SSL2_CLIENT, "SP_PROT_SSL2_CLIENT")
+  , (SP_PROT_SSL3_SERVER, "SP_PROT_SSL3_SERVER")
+  , (SP_PROT_SSL3_CLIENT, "SP_PROT_SSL3_CLIENT")
+  , (SP_PROT_TLS1_SERVER, "SP_PROT_TLS1_SERVER")
+  , (SP_PROT_TLS1_CLIENT, "SP_PROT_TLS1_CLIENT")
+  , (SP_PROT_TLS1_1_SERVER, "SP_PROT_TLS1_1_SERVER")
+  , (SP_PROT_TLS1_1_CLIENT, "SP_PROT_TLS1_1_CLIENT")
+  , (SP_PROT_TLS1_2_SERVER, "SP_PROT_TLS1_2_SERVER")
+  , (SP_PROT_TLS1_2_CLIENT, "SP_PROT_TLS1_2_CLIENT")
+  ]
+
+instance Show SChannelProt where
+  show x = printf "SChannelProt{ %s }" (parseBitFlags sChannelProtNames unSChannelProt x)
+
+newtype SChannelCredFlags = SChannelCredFlags { unSChannelCredFlags :: DWORD }
+  deriving (Eq, Bits, Storable)
+
+pattern SCH_CRED_NO_SYSTEM_MAPPER = SChannelCredFlags 0x00000002
+pattern SCH_CRED_NO_SERVERNAME_CHECK = SChannelCredFlags 0x00000004
+pattern SCH_CRED_MANUAL_CRED_VALIDATION = SChannelCredFlags 0x00000008
+pattern SCH_CRED_NO_DEFAULT_CREDS = SChannelCredFlags 0x00000010
+pattern SCH_CRED_AUTO_CRED_VALIDATION = SChannelCredFlags 0x00000020
+pattern SCH_CRED_USE_DEFAULT_CREDS = SChannelCredFlags 0x00000040
+pattern SCH_CRED_DISABLE_RECONNECTS = SChannelCredFlags 0x00000080
+pattern SCH_CRED_REVOCATION_CHECK_END_CERT = SChannelCredFlags 0x00000100
+pattern SCH_CRED_REVOCATION_CHECK_CHAIN = SChannelCredFlags 0x00000200
+pattern SCH_CRED_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT = SChannelCredFlags 0x00000400
+pattern SCH_CRED_IGNORE_NO_REVOCATION_CHECK = SChannelCredFlags 0x00000800
+pattern SCH_CRED_IGNORE_REVOCATION_OFFLINE = SChannelCredFlags 0x00001000
+pattern SCH_CRED_RESTRICTED_ROOTS = SChannelCredFlags 0x00002000
+pattern SCH_CRED_REVOCATION_CHECK_CACHE_ONLY = SChannelCredFlags 0x00004000
+pattern SCH_CRED_CACHE_ONLY_URL_RETRIEVAL = SChannelCredFlags 0x00008000
+pattern SCH_CRED_MEMORY_STORE_CERT = SChannelCredFlags 0x00010000
+pattern SCH_CRED_CACHE_ONLY_URL_RETRIEVAL_ON_CREATE = SChannelCredFlags 0x00020000
+pattern SCH_SEND_ROOT_CERT = SChannelCredFlags 0x00040000
+pattern SCH_CRED_SNI_CREDENTIAL = SChannelCredFlags 0x00080000
+pattern SCH_CRED_SNI_ENABLE_OCSP = SChannelCredFlags 0x00100000
+pattern SCH_SEND_AUX_RECORD = SChannelCredFlags 0x00200000
+pattern SCH_USE_STRONG_CRYPTO = SChannelCredFlags 0x00400000
+
+sChannelCredFlagsNames :: [(SChannelCredFlags, String)]
+sChannelCredFlagsNames =
+  [ (SCH_CRED_NO_SYSTEM_MAPPER, "SCH_CRED_NO_SYSTEM_MAPPER")
+  , (SCH_CRED_NO_SERVERNAME_CHECK, "SCH_CRED_NO_SERVERNAME_CHECK")
+  , (SCH_CRED_MANUAL_CRED_VALIDATION, "SCH_CRED_MANUAL_CRED_VALIDATION")
+  , (SCH_CRED_NO_DEFAULT_CREDS, "SCH_CRED_NO_DEFAULT_CREDS")
+  , (SCH_CRED_AUTO_CRED_VALIDATION, "SCH_CRED_AUTO_CRED_VALIDATION")
+  , (SCH_CRED_USE_DEFAULT_CREDS, "SCH_CRED_USE_DEFAULT_CREDS")
+  , (SCH_CRED_DISABLE_RECONNECTS, "SCH_CRED_DISABLE_RECONNECTS")
+  , (SCH_CRED_REVOCATION_CHECK_END_CERT, "SCH_CRED_REVOCATION_CHECK_END_CERT")
+  , (SCH_CRED_REVOCATION_CHECK_CHAIN, "SCH_CRED_REVOCATION_CHECK_CHAIN")
+  , (SCH_CRED_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT, "SCH_CRED_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT")
+  , (SCH_CRED_IGNORE_NO_REVOCATION_CHECK, "SCH_CRED_IGNORE_NO_REVOCATION_CHECK")
+  , (SCH_CRED_IGNORE_REVOCATION_OFFLINE, "SCH_CRED_IGNORE_REVOCATION_OFFLINE")
+  , (SCH_CRED_RESTRICTED_ROOTS, "SCH_CRED_RESTRICTED_ROOTS")
+  , (SCH_CRED_REVOCATION_CHECK_CACHE_ONLY, "SCH_CRED_REVOCATION_CHECK_CACHE_ONLY")
+  , (SCH_CRED_CACHE_ONLY_URL_RETRIEVAL, "SCH_CRED_CACHE_ONLY_URL_RETRIEVAL")
+  , (SCH_CRED_MEMORY_STORE_CERT, "SCH_CRED_MEMORY_STORE_CERT")
+  , (SCH_CRED_CACHE_ONLY_URL_RETRIEVAL_ON_CREATE, "SCH_CRED_CACHE_ONLY_URL_RETRIEVAL_ON_CREATE")
+  , (SCH_SEND_ROOT_CERT, "SCH_SEND_ROOT_CERT")
+  , (SCH_CRED_SNI_CREDENTIAL, "SCH_CRED_SNI_CREDENTIAL")
+  , (SCH_CRED_SNI_ENABLE_OCSP, "SCH_CRED_SNI_ENABLE_OCSP")
+  , (SCH_SEND_AUX_RECORD, "SCH_SEND_AUX_RECORD")
+  , (SCH_USE_STRONG_CRYPTO, "SCH_USE_STRONG_CRYPTO")
+  ]
+
+instance Show SChannelCredFlags where
+  show x = printf "SChannelCredFlags{ %s }" (parseBitFlags sChannelCredFlagsNames unSChannelCredFlags x)
+
+newtype SChannelCredFormat = SChannelCredFormat { unSChannelCredFormat :: DWORD }
+  deriving (Eq, Storable)
+
+pattern SCH_CRED_FORMAT_CERT_HASH = SChannelCredFormat #{const SCH_CRED_FORMAT_CERT_HASH}
+pattern SCH_CRED_FORMAT_CERT_HASH_STORE = SChannelCredFormat 0x00000002
+
+sChannelCredFormatNames :: [(SChannelCredFormat, String)]
+sChannelCredFormatNames =
+  [ (SCH_CRED_FORMAT_CERT_HASH, "SCH_CRED_FORMAT_CERT_HASH")
+  , (SCH_CRED_FORMAT_CERT_HASH_STORE, "SCH_CRED_FORMAT_CERT_HASH_STORE")
+  ]
+
+instance Show SChannelCredFormat where
+  show x = printf "SChannelCredFormat{ %s }" (pickName sChannelCredFormatNames unSChannelCredFormat x)
+
+data SCHANNEL_CRED = SCHANNEL_CRED
+  { schannelDwVersion               :: DWORD
+  , schannelCCreds                  :: DWORD
+  , schannelPaCred                  :: DWORD
+  , schannelRootStore               :: HCERTSTORE
+  , schannelCMappers                :: DWORD
+  , schannelAphMappers              :: Ptr (Ptr HMAPPER)
+  , schannelCSupportedAlgs          :: DWORD
+  , schannelPalgSupportedAlgs       :: Ptr ALG_ID
+  , schannelGrbitEnabledProtocols   :: SChannelProt
+  , schannelDwMinimumCipherStrength :: DWORD
+  , schannelDwMaximumCipherStrength :: DWORD
+  , schannelDwSessionLifespan       :: DWORD
+  , schannelFlags                   :: SChannelCredFlags
+  , schannelDwCredFormat            :: SChannelCredFormat
+  }

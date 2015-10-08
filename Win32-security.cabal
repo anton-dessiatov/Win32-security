@@ -32,6 +32,7 @@ library
     , text >= 1
     , transformers >= 0.4
     , Win32 >= 2
+    , Win32-cryptography >= 0.1
     , Win32-errors >= 0.2.1
   exposed-modules:
       System.Win32.Security.AccessControl
