@@ -40,7 +40,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Foreign as T
 import qualified System.Win32.Error as E
 import qualified System.Win32.Error.Foreign as E
-import qualified System.Win32.Security.MarshalText as T
+import qualified System.Win32.Security.Helpers as SH
 
 #include <windows.h>
 
@@ -57,7 +57,7 @@ convertSidToStringSid sid =
   E.failIfFalse_ "ConvertSidToStringSid" $
     c_ConvertSidToStringSid pSid pStringSid
   str <- peek pStringSid
-  result <- T.fromPtr0 str
+  result <- SH.fromPtr0 str
   _ <- localFree str
   return result
 
@@ -137,8 +137,8 @@ data LookedUpAccount = LookedUpAccount
 
 lookupAccountName :: Maybe T.Text -> T.Text -> IO (Maybe LookedUpAccount)
 lookupAccountName systemName accountName =
-  maybe ($ nullPtr) T.useAsPtr0 systemName $ \lpSystemName ->
-  T.useAsPtr0 accountName $ \lpAccountName ->
+  maybe ($ nullPtr) SH.useAsPtr0 systemName $ \lpSystemName ->
+  SH.useAsPtr0 accountName $ \lpAccountName ->
   with 0 $ \lpcbSid ->
   with 0 $ \lpcchReferencedDomainName ->
   with (SID_NAME_USE 0) $ \lppeUse -> do
@@ -180,7 +180,7 @@ foreign import WINDOWS_CCONV unsafe "windows.h LookupAccountNameW"
 
 lookupAccountSid :: Maybe T.Text -> Sid -> IO (Maybe LookedUpAccount)
 lookupAccountSid systemName sid =
-  maybe ($ nullPtr) T.useAsPtr0 systemName $ \lpSystemName ->
+  maybe ($ nullPtr) SH.useAsPtr0 systemName $ \lpSystemName ->
   withSidPtr sid $ \pSid ->
   with 0 $ \lpcchName ->
   with 0 $ \lpcchReferencedDomainName ->

@@ -16,7 +16,6 @@ module System.Win32.Security.AccessControl
   , aclFromList
   ) where
 
-import Control.Applicative ((<$>))
 import Control.Monad (foldM_)
 import Data.Bits
 import Foreign

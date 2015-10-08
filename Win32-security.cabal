@@ -13,7 +13,10 @@ homepage:         https://github.com/anton-dessiatov/Win32-security
 bug-reports:      https://github.com/anton-dessiatov/Win32-security/issues
 description:
     This package contains bindings for security-related functions of the Windows API.
-    Its main features are account name/SID lookup and editing securable objects access control lists.
+    Main features are:
+      * Account name/SID lookup
+      * Editing securable objects access control lists
+      * SSPI functions
 
 Flag build-tests
     Description:
@@ -25,17 +28,23 @@ library
   default-language: Haskell2010
   build-depends:
       base >= 4 && < 5
+    , resourcet >= 1.1
     , text >= 1
+    , transformers >= 0.4
     , Win32 >= 2
     , Win32-errors >= 0.2.1
   exposed-modules:
       System.Win32.Security.AccessControl
       System.Win32.Security.Sid
       System.Win32.Security.SecurityInfo
+      System.Win32.Security.Sspi
   other-modules:
-      System.Win32.Security.MarshalText
+      System.Win32.Security.Helpers
+      System.Win32.Security.Sspi.Internal
   hs-source-dirs: src
   include-dirs: cbits
+  extra-libraries: secur32
+  cpp-options: "-D_WIN32_WINNT=0x0601"
   c-sources:
     cbits/Win32Security.c
   if os(windows) && arch(i386)
