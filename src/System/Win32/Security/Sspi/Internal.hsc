@@ -797,8 +797,8 @@ instance Show SChannelCredFormat where
 data SCHANNEL_CRED = SCHANNEL_CRED
   { schannelDwVersion               :: DWORD
   , schannelCCreds                  :: DWORD
-  , schannelPaCred                  :: DWORD
-  , schannelRootStore               :: HCERTSTORE
+  , schannelPaCred                  :: Ptr PCERT_CONTEXT
+  , schannelHRootStore              :: HCERTSTORE
   , schannelCMappers                :: DWORD
   , schannelAphMappers              :: Ptr (Ptr HMAPPER)
   , schannelCSupportedAlgs          :: DWORD
@@ -807,6 +807,40 @@ data SCHANNEL_CRED = SCHANNEL_CRED
   , schannelDwMinimumCipherStrength :: DWORD
   , schannelDwMaximumCipherStrength :: DWORD
   , schannelDwSessionLifespan       :: DWORD
-  , schannelFlags                   :: SChannelCredFlags
+  , schannelDwFlags                 :: SChannelCredFlags
   , schannelDwCredFormat            :: SChannelCredFormat
-  }
+  } deriving (Show)
+
+instance Storable SCHANNEL_CRED where
+  sizeOf _ = #{size SCHANNEL_CRED}
+  alignment _ = alignment (undefined :: CInt)
+  poke p x = do
+    #{poke SCHANNEL_CRED, dwVersion} p $ schannelDwVersion x
+    #{poke SCHANNEL_CRED, cCreds} p $ schannelCCreds x
+    #{poke SCHANNEL_CRED, paCred} p $ schannelPaCred x
+    #{poke SCHANNEL_CRED, hRootStore} p $ schannelHRootStore x
+    #{poke SCHANNEL_CRED, cMappers} p $ schannelCMappers x
+    #{poke SCHANNEL_CRED, aphMappers} p $ schannelAphMappers x
+    #{poke SCHANNEL_CRED, cSupportedAlgs} p $ schannelCSupportedAlgs x
+    #{poke SCHANNEL_CRED, palgSupportedAlgs} p $ schannelPalgSupportedAlgs x
+    #{poke SCHANNEL_CRED, grbitEnabledProtocols} p $ schannelGrbitEnabledProtocols x
+    #{poke SCHANNEL_CRED, dwMinimumCipherStrength} p $ schannelDwMinimumCipherStrength x
+    #{poke SCHANNEL_CRED, dwMaximumCipherStrength} p $ schannelDwMaximumCipherStrength x
+    #{poke SCHANNEL_CRED, dwSessionLifespan} p $ schannelDwSessionLifespan x
+    #{poke SCHANNEL_CRED, dwFlags} p $ schannelDwFlags x
+    #{poke SCHANNEL_CRED, dwCredFormat} p $ schannelDwCredFormat x
+  peek p = SCHANNEL_CRED
+    <$> #{peek SCHANNEL_CRED, dwVersion} p
+    <*> #{peek SCHANNEL_CRED, cCreds} p
+    <*> #{peek SCHANNEL_CRED, paCred} p
+    <*> #{peek SCHANNEL_CRED, hRootStore} p
+    <*> #{peek SCHANNEL_CRED, cMappers} p
+    <*> #{peek SCHANNEL_CRED, aphMappers} p
+    <*> #{peek SCHANNEL_CRED, cSupportedAlgs} p
+    <*> #{peek SCHANNEL_CRED, palgSupportedAlgs} p
+    <*> #{peek SCHANNEL_CRED, grbitEnabledProtocols} p
+    <*> #{peek SCHANNEL_CRED, dwMinimumCipherStrength} p
+    <*> #{peek SCHANNEL_CRED, dwMaximumCipherStrength} p
+    <*> #{peek SCHANNEL_CRED, dwSessionLifespan} p
+    <*> #{peek SCHANNEL_CRED, dwFlags} p
+    <*> #{peek SCHANNEL_CRED, dwCredFormat} p
