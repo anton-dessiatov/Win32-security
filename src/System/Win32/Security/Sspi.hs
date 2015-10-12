@@ -5,6 +5,9 @@ module System.Win32.Security.Sspi
   , pattern SECPKG_CRED_INBOUND
   , pattern SECPKG_CRED_OUTBOUND
   , SecWinntAuthIdentity (..)
+  , withSecWinntAuthIdentity
+  , SChannelCredentials (..)
+  , withSChannelCredentials
   , CredSSPCred (..)
   , acquireCredentialsHandle
   , PCtxtHandle
@@ -137,10 +140,52 @@ module System.Win32.Security.Sspi
   , querySecurityPackageInfo
   , completeAuthToken
   , enumerateSecurityPackages
+  , HMAPPER
+  , SChannelProt (..)
+  , pattern SP_PROT_PCT1_SERVER
+  , pattern SP_PROT_PCT1_CLIENT
+  , pattern SP_PROT_SSL2_SERVER
+  , pattern SP_PROT_SSL2_CLIENT
+  , pattern SP_PROT_SSL3_SERVER
+  , pattern SP_PROT_SSL3_CLIENT
+  , pattern SP_PROT_TLS1_SERVER
+  , pattern SP_PROT_TLS1_CLIENT
+  , pattern SP_PROT_TLS1_1_SERVER
+  , pattern SP_PROT_TLS1_1_CLIENT
+  , pattern SP_PROT_TLS1_2_SERVER
+  , pattern SP_PROT_TLS1_2_CLIENT
+  , SChannelCredFlags (..)
+  , pattern SCH_CRED_NO_SYSTEM_MAPPER
+  , pattern SCH_CRED_NO_SERVERNAME_CHECK
+  , pattern SCH_CRED_MANUAL_CRED_VALIDATION
+  , pattern SCH_CRED_NO_DEFAULT_CREDS
+  , pattern SCH_CRED_AUTO_CRED_VALIDATION
+  , pattern SCH_CRED_USE_DEFAULT_CREDS
+  , pattern SCH_CRED_DISABLE_RECONNECTS
+  , pattern SCH_CRED_REVOCATION_CHECK_END_CERT
+  , pattern SCH_CRED_REVOCATION_CHECK_CHAIN
+  , pattern SCH_CRED_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT
+  , pattern SCH_CRED_IGNORE_NO_REVOCATION_CHECK
+  , pattern SCH_CRED_IGNORE_REVOCATION_OFFLINE
+  , pattern SCH_CRED_RESTRICTED_ROOTS
+  , pattern SCH_CRED_REVOCATION_CHECK_CACHE_ONLY
+  , pattern SCH_CRED_CACHE_ONLY_URL_RETRIEVAL
+  , pattern SCH_CRED_MEMORY_STORE_CERT
+  , pattern SCH_CRED_CACHE_ONLY_URL_RETRIEVAL_ON_CREATE
+  , pattern SCH_SEND_ROOT_CERT
+  , pattern SCH_CRED_SNI_CREDENTIAL
+  , pattern SCH_CRED_SNI_ENABLE_OCSP
+  , pattern SCH_SEND_AUX_RECORD
+  , pattern SCH_USE_STRONG_CRYPTO
+  , SChannelCredFormat (..)
+  , pattern SCH_CRED_FORMAT_CERT_HASH
+  , pattern SCH_CRED_FORMAT_CERT_HASH_STORE
+  , SCHANNEL_CRED (..)
   ) where
 
 import Foreign hiding (void)
 import Foreign.C.Types
+import Foreign.Marshal.Array
 import Control.Exception (bracketOnError)
 import Control.Monad
 import Control.Monad.Trans.Resource
@@ -149,7 +194,9 @@ import Data.Char (chr)
 import Data.Maybe
 import System.Win32.Error
 import System.Win32.Error.Foreign
+import System.Win32.Cryptography.Types
 import System.Win32.Security.Sspi.Internal
+import System.Win32.Types (DWORD)
 import qualified Data.Text as T
 import qualified Data.Text.Foreign as T
 
@@ -171,21 +218,56 @@ withSecWinntAuthIdentity x act =
              SEC_WINNT_AUTH_IDENTITY_UNICODE
   in with x' act
 
--- There is actually more to CREDSSP_CRED structure than just embedding SEC_WINNT_AUTH_IDENTITY
--- it's just not implemented here.
-newtype CredSSPCred = CredSSPCred
-  { credAuthIdentity :: SecWinntAuthIdentity
-  } deriving (Eq, Show)
+data SChannelCredentials = SChannelCredentials
+  { schannelCerts                 :: [PCERT_CONTEXT]
+  , schannelRootStore             :: Maybe HCERTSTORE
+  , schannelAlgs                  :: [ALG_ID]
+  , schannelProtocols             :: SChannelProt
+  , schannelMinimumCipherStrength :: Maybe DWORD
+  , schannelMaximumCipherStrength :: Maybe DWORD
+  , schannelSessionLifespan       :: Maybe DWORD
+  -- ^ Time in milliseconds that Schannel keeps the session in its session cache.
+  , schannelFlags                 :: SChannelCredFlags
+  , schannelCredFormat            :: SChannelCredFormat
+  } deriving (Show)
+
+withSChannelCredentials :: SChannelCredentials -> (Ptr SCHANNEL_CRED -> IO a) -> IO a
+withSChannelCredentials creds act =
+  withArrayLen (schannelCerts creds) $ \cCreds paCred ->
+  withArrayLen (schannelAlgs creds) $ \cSupportedAlgs palgSupportedAlgs ->
+  with SCHANNEL_CRED
+    { schannelDwVersion = SCHANNEL_CRED_VERSION
+    , schannelCCreds = fromIntegral cCreds
+    , schannelPaCred = paCred
+    , schannelHRootStore = fromMaybe nullPtr (schannelRootStore creds)
+    , schannelCMappers = 0
+    , schannelAphMappers = nullPtr
+    , schannelCSupportedAlgs = fromIntegral cSupportedAlgs
+    , schannelPalgSupportedAlgs = palgSupportedAlgs
+    , schannelGrbitEnabledProtocols = schannelProtocols creds
+    , schannelDwMinimumCipherStrength = fromMaybe 0 (schannelMinimumCipherStrength creds)
+    , schannelDwMaximumCipherStrength = fromMaybe 0 (schannelMaximumCipherStrength creds)
+    , schannelDwSessionLifespan = fromMaybe 0 (schannelSessionLifespan creds)
+    , schannelDwFlags = schannelFlags creds
+    , schannelDwCredFormat = schannelCredFormat creds
+    }
+    act
+
+data CredSSPCred = CredSSPCred
+  { credSspSChannel :: Maybe SChannelCredentials
+  , credSspSPNego   :: Maybe SecWinntAuthIdentity
+  } deriving (Show)
 
 withCredSSPCred :: CredSSPCred -> (Ptr CREDSSP_CRED -> IO a) -> IO a
 withCredSSPCred x act =
-  withSecWinntAuthIdentity (credAuthIdentity x) $ \pSpnegoCred ->
+  maybe ($ nullPtr) withSecWinntAuthIdentity (credSspSPNego x) $ \pSpnegoCred ->
+  maybe ($ nullPtr) withSChannelCredentials (credSspSChannel x) $ \pSchannelCred ->
   let c = CREDSSP_CRED
             -- There is some dark Windows API magic in how you are supposed to pass
             -- "both" here even if actually there are only Negotiate credentials.
             -- Passing just "Password" makes AcquireCredentialsHandle to fail with SEC_E_INVALID_TOKEN
             CredsspSubmitBufferBoth
-            nullPtr
+            (castPtr pSchannelCred)
             (castPtr pSpnegoCred)
   in with c act
 

@@ -107,7 +107,7 @@ data SEC_WINNT_AUTH_IDENTITY = SEC_WINNT_AUTH_IDENTITY
   , password       :: Ptr CUShort
   , passwordLength :: CULong
   , flags          :: AuthIdentityFlags
-  }
+  } deriving (Show)
 
 instance Storable SEC_WINNT_AUTH_IDENTITY where
   sizeOf _ = #{size SEC_WINNT_AUTH_IDENTITY}
@@ -794,8 +794,13 @@ sChannelCredFormatNames =
 instance Show SChannelCredFormat where
   show x = printf "SChannelCredFormat{ %s }" (pickName sChannelCredFormatNames unSChannelCredFormat x)
 
+newtype SChannelCredVersion = SChannelCredVersion { unSChannelCredVersion :: DWORD }
+  deriving (Eq, Storable, Show)
+
+pattern SCHANNEL_CRED_VERSION = SChannelCredVersion #{const SCHANNEL_CRED_VERSION}
+
 data SCHANNEL_CRED = SCHANNEL_CRED
-  { schannelDwVersion               :: DWORD
+  { schannelDwVersion               :: SChannelCredVersion
   , schannelCCreds                  :: DWORD
   , schannelPaCred                  :: Ptr PCERT_CONTEXT
   , schannelHRootStore              :: HCERTSTORE
