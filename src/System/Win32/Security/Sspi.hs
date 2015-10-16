@@ -6,8 +6,8 @@ module System.Win32.Security.Sspi
   , pattern SECPKG_CRED_OUTBOUND
   , SecWinntAuthIdentity (..)
   , withSecWinntAuthIdentity
-  , SChannelCredentials (..)
-  , withSChannelCredentials
+  , SChannelCred (..)
+  , withSChannelCred
   , CredSSPCred (..)
   , acquireCredentialsHandle
   , PCtxtHandle
@@ -218,10 +218,10 @@ withSecWinntAuthIdentity x act =
              SEC_WINNT_AUTH_IDENTITY_UNICODE
   in with x' act
 
-data SChannelCredentials = SChannelCredentials
+data SChannelCred = SChannelCred
   { schannelCerts                 :: [PCERT_CONTEXT]
   , schannelRootStore             :: Maybe HCERTSTORE
-  , schannelAlgs                  :: [ALG_ID]
+  , schannelAlgs                  :: Maybe [ALG_ID]
   , schannelProtocols             :: SChannelProt
   , schannelMinimumCipherStrength :: Maybe DWORD
   , schannelMaximumCipherStrength :: Maybe DWORD
@@ -231,37 +231,38 @@ data SChannelCredentials = SChannelCredentials
   , schannelCredFormat            :: SChannelCredFormat
   } deriving (Show)
 
-withSChannelCredentials :: SChannelCredentials -> (Ptr SCHANNEL_CRED -> IO a) -> IO a
-withSChannelCredentials creds act =
+withSChannelCred :: SChannelCred -> (Ptr SCHANNEL_CRED -> IO a) -> IO a
+withSChannelCred creds act =
   withArrayLen (schannelCerts creds) $ \cCreds paCred ->
-  withArrayLen (schannelAlgs creds) $ \cSupportedAlgs palgSupportedAlgs ->
-  with SCHANNEL_CRED
-    { schannelDwVersion = SCHANNEL_CRED_VERSION
-    , schannelCCreds = fromIntegral cCreds
-    , schannelPaCred = paCred
-    , schannelHRootStore = fromMaybe nullPtr (schannelRootStore creds)
-    , schannelCMappers = 0
-    , schannelAphMappers = nullPtr
-    , schannelCSupportedAlgs = fromIntegral cSupportedAlgs
-    , schannelPalgSupportedAlgs = palgSupportedAlgs
-    , schannelGrbitEnabledProtocols = schannelProtocols creds
-    , schannelDwMinimumCipherStrength = fromMaybe 0 (schannelMinimumCipherStrength creds)
-    , schannelDwMaximumCipherStrength = fromMaybe 0 (schannelMaximumCipherStrength creds)
-    , schannelDwSessionLifespan = fromMaybe 0 (schannelSessionLifespan creds)
-    , schannelDwFlags = schannelFlags creds
-    , schannelDwCredFormat = schannelCredFormat creds
-    }
-    act
+  maybe (\x -> x 0 nullPtr) withArrayLen (schannelAlgs creds) $ \cSupportedAlgs palgSupportedAlgs -> do
+    let rawCred = SCHANNEL_CRED
+          { schannelDwVersion = SCHANNEL_CRED_VERSION
+          , schannelCCreds = fromIntegral cCreds
+          , schannelPaCred = paCred
+          , schannelHRootStore = fromMaybe nullPtr (schannelRootStore creds)
+          , schannelCMappers = 0
+          , schannelAphMappers = nullPtr
+          , schannelCSupportedAlgs = fromIntegral cSupportedAlgs
+          , schannelPalgSupportedAlgs = palgSupportedAlgs
+          , schannelGrbitEnabledProtocols = schannelProtocols creds
+          , schannelDwMinimumCipherStrength = fromMaybe 0 (schannelMinimumCipherStrength creds)
+          , schannelDwMaximumCipherStrength = fromMaybe 0 (schannelMaximumCipherStrength creds)
+          , schannelDwSessionLifespan = fromMaybe 0 (schannelSessionLifespan creds)
+          , schannelDwFlags = schannelFlags creds
+          , schannelDwCredFormat = schannelCredFormat creds
+          }
+    putStrLn $ show rawCred
+    with rawCred act
 
 data CredSSPCred = CredSSPCred
-  { credSspSChannel :: Maybe SChannelCredentials
+  { credSspSChannel :: Maybe SChannelCred
   , credSspSPNego   :: Maybe SecWinntAuthIdentity
   } deriving (Show)
 
 withCredSSPCred :: CredSSPCred -> (Ptr CREDSSP_CRED -> IO a) -> IO a
 withCredSSPCred x act =
   maybe ($ nullPtr) withSecWinntAuthIdentity (credSspSPNego x) $ \pSpnegoCred ->
-  maybe ($ nullPtr) withSChannelCredentials (credSspSChannel x) $ \pSchannelCred ->
+  maybe ($ nullPtr) withSChannelCred (credSspSChannel x) $ \pSchannelCred ->
   let c = CREDSSP_CRED
             -- There is some dark Windows API magic in how you are supposed to pass
             -- "both" here even if actually there are only Negotiate credentials.
@@ -288,6 +289,7 @@ acquireCredentialsHandle principal package credentialUse authData = allocate cre
           useAsPtr0 package $ \pszPackage ->
           maybe ($ nullPtr) withCredSSPCred authData $ \pAuthData ->
           alloca $ \pTimestamp -> do
+            putStrLn $ show authData
             pCredHandle <- malloc
             failUnlessSuccess "AcquireCredentialsHandle" $ fromIntegral <$> c_AcquireCredentialsHandle
               pszPrincipal
