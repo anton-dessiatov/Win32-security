@@ -556,6 +556,7 @@ pattern SECPKG_ATTR_PACKAGE_INFO = SecPkgAttr 10
 pattern SECPKG_ATTR_SERVER_AUTH_FLAGS = SecPkgAttr 0x80000083
 pattern SECPKG_ATTR_SIZES = SecPkgAttr 0
 pattern SECPKG_ATTR_SUBJECT_SECURITY_ATTRIBUTES = SecPkgAttr 128
+pattern SECPKG_ATTR_STREAM_SIZES = SecPkgAttr 4
 
 -- SECURITY_STATUS SEC_ENTRY QueryContextAttributes(
 --   _In_  PCtxtHandle phContext,
@@ -872,3 +873,28 @@ foreign import WINDOWS_CCONV "windows.h FreeContextBuffer"
   c_FreeContextBuffer
     :: Ptr () -- pvContextBuffer
     -> IO SecurityStatus
+
+-- SecPkgContext_StreamSizes
+data ContextStreamSizes = ContextStreamSizes
+  { cssHeader         :: CULong
+  , cssTrailer        :: CULong
+  , cssMaximumMessage :: CULong
+  , cssCBuffers       :: CULong
+  , cssCbBlockSize    :: CULong
+  } deriving (Show)
+
+instance Storable ContextStreamSizes where
+  sizeOf _ = #{size SecPkgContext_StreamSizes}
+  alignment _ = alignment (undefined :: CInt)
+  poke p x = do
+    #{poke SecPkgContext_StreamSizes, cbHeader} p $ cssHeader x
+    #{poke SecPkgContext_StreamSizes, cbTrailer} p $ cssTrailer x
+    #{poke SecPkgContext_StreamSizes, cbMaximumMessage} p $ cssMaximumMessage x
+    #{poke SecPkgContext_StreamSizes, cBuffers} p $ cssCBuffers x
+    #{poke SecPkgContext_StreamSizes, cbBlockSize} p $ cssCbBlockSize x
+  peek p = ContextStreamSizes
+    <$> #{peek SecPkgContext_StreamSizes, cbHeader} p
+    <*> #{peek SecPkgContext_StreamSizes, cbTrailer} p
+    <*> #{peek SecPkgContext_StreamSizes, cbMaximumMessage} p
+    <*> #{peek SecPkgContext_StreamSizes, cBuffers} p
+    <*> #{peek SecPkgContext_StreamSizes, cbBlockSize} p

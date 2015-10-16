@@ -183,6 +183,8 @@ module System.Win32.Security.Sspi
   , pattern SCH_CRED_FORMAT_CERT_HASH_STORE
   , SCHANNEL_CRED (..)
   , queryContextCreds
+  , ContextStreamSizes (..)
+  , queryContextStreamSizes
   ) where
 
 import Foreign hiding (void)
@@ -528,8 +530,15 @@ queryContextCreds ctxt =
     -- This runs masked because the following function might allocate additional buffer to be
     -- freed by FreeContextBuffer and we don't want async exceptions to interfere with that.
     failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
-      (SecPkgAttr 0x80000086) (castPtr pBuffer)
+      SECPKG_ATTR_CREDS (castPtr pBuffer)
     ccreds <- peek pBuffer
     result <- B.packCStringLen (castPtr $ ccAuthBuffer ccreds, fromIntegral $ ccAuthBufferLen ccreds)
     void $ c_FreeContextBuffer (castPtr $ ccAuthBuffer ccreds)
     return result
+
+queryContextStreamSizes :: PCtxtHandle -> IO ContextStreamSizes
+queryContextStreamSizes ctxt =
+  alloca $ \(pBuffer :: Ptr ContextStreamSizes) -> do
+    failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
+      SECPKG_ATTR_STREAM_SIZES (castPtr pBuffer)
+    peek pBuffer
