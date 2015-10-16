@@ -565,7 +565,7 @@ pattern SECPKG_ATTR_SUBJECT_SECURITY_ATTRIBUTES = SecPkgAttr 128
 foreign import WINDOWS_CCONV "windows.h QueryContextAttributesW"
   c_QueryContextAttributes
     :: PCtxtHandle -- phContext
-    -> CULong -- ulAttribute
+    -> SecPkgAttr -- ulAttribute
     -> Ptr () -- pBuffer
     -> IO SecurityStatus
 
@@ -849,3 +849,26 @@ instance Storable SCHANNEL_CRED where
     <*> #{peek SCHANNEL_CRED, dwSessionLifespan} p
     <*> #{peek SCHANNEL_CRED, dwFlags} p
     <*> #{peek SCHANNEL_CRED, dwCredFormat} p
+
+data SecPkgContext_ClientCreds = SecPkgContext_ClientCreds
+  { ccAuthBufferLen :: CULong
+  , ccAuthBuffer    :: Ptr CUChar
+  } deriving (Show)
+
+instance Storable SecPkgContext_ClientCreds where
+  sizeOf _ = #{size SecPkgContext_ClientCreds}
+  alignment _ = alignment (undefined :: CInt)
+  poke p x = do
+    #{poke SecPkgContext_ClientCreds, AuthBufferLen} p $ ccAuthBufferLen x
+    #{poke SecPkgContext_ClientCreds, AuthBuffer} p $ ccAuthBuffer x
+  peek p = SecPkgContext_ClientCreds
+    <$> #{peek SecPkgContext_ClientCreds, AuthBufferLen} p
+    <*> #{peek SecPkgContext_ClientCreds, AuthBuffer} p
+
+-- SECURITY_STATUS SEC_Entry FreeContextBuffer(
+--   _In_ PVOID pvContextBuffer
+-- );
+foreign import WINDOWS_CCONV "windows.h FreeContextBuffer"
+  c_FreeContextBuffer
+    :: Ptr () -- pvContextBuffer
+    -> IO SecurityStatus

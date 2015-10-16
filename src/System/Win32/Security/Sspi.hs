@@ -1,11 +1,12 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE OverloadedStrings, PatternSynonyms, ScopedTypeVariables #-}
 module System.Win32.Security.Sspi
   ( PCredHandle
   , CredentialUse (..)
   , pattern SECPKG_CRED_INBOUND
   , pattern SECPKG_CRED_OUTBOUND
   , SecWinntAuthIdentity (..)
-  , withSecWinntAuthIdentity
+  , NegoCred (..)
+  , withNegoCred
   , SChannelCred (..)
   , withSChannelCred
   , CredSSPCred (..)
@@ -181,12 +182,13 @@ module System.Win32.Security.Sspi
   , pattern SCH_CRED_FORMAT_CERT_HASH
   , pattern SCH_CRED_FORMAT_CERT_HASH_STORE
   , SCHANNEL_CRED (..)
+  , queryContextCreds
   ) where
 
 import Foreign hiding (void)
 import Foreign.C.Types
 import Foreign.Marshal.Array
-import Control.Exception (bracketOnError)
+import Control.Exception (bracketOnError, mask_)
 import Control.Monad
 import Control.Monad.Trans.Resource
 import Control.Monad.IO.Class
@@ -195,8 +197,11 @@ import Data.Maybe
 import System.Win32.Error
 import System.Win32.Error.Foreign
 import System.Win32.Cryptography.Types
+import System.Win32.Security.Helpers
 import System.Win32.Security.Sspi.Internal
 import System.Win32.Types (DWORD)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Unsafe as BU
 import qualified Data.Text as T
 import qualified Data.Text.Foreign as T
 
@@ -206,17 +211,24 @@ data SecWinntAuthIdentity = SecWinntAuthIdentity
   , authIdentityPassword :: T.Text
   } deriving (Eq, Show)
 
-withSecWinntAuthIdentity :: SecWinntAuthIdentity -> (Ptr SEC_WINNT_AUTH_IDENTITY -> IO a) -> IO a
-withSecWinntAuthIdentity x act =
-  T.useAsPtr (authIdentityUser x) $ \szUser userLength ->
-  T.useAsPtr (authIdentityDomain x) $ \szDomain domainLength ->
-  T.useAsPtr (authIdentityPassword x) $ \szPassword passwordLength ->
-  let x' = SEC_WINNT_AUTH_IDENTITY
-             (castPtr szUser) (fromIntegral userLength)
-             (castPtr szDomain) (fromIntegral domainLength)
-             (castPtr szPassword) (fromIntegral passwordLength)
-             SEC_WINNT_AUTH_IDENTITY_UNICODE
-  in with x' act
+data NegoCred
+  = NegoCredOpaque B.ByteString
+  | NegoCredSecWinntAuthIdentity SecWinntAuthIdentity
+  deriving (Eq, Show)
+
+withNegoCred :: NegoCred -> (Ptr () -> IO a) -> IO a
+withNegoCred x act = case x of
+  NegoCredOpaque token -> BU.unsafeUseAsCString token $ \ptr -> act (castPtr ptr)
+  NegoCredSecWinntAuthIdentity swai ->
+    T.useAsPtr (authIdentityUser swai) $ \szUser userLength ->
+    T.useAsPtr (authIdentityDomain swai) $ \szDomain domainLength ->
+    T.useAsPtr (authIdentityPassword swai) $ \szPassword passwordLength ->
+    let x' = SEC_WINNT_AUTH_IDENTITY
+               (castPtr szUser) (fromIntegral userLength)
+               (castPtr szDomain) (fromIntegral domainLength)
+               (castPtr szPassword) (fromIntegral passwordLength)
+               SEC_WINNT_AUTH_IDENTITY_UNICODE
+    in with x' (act . castPtr)
 
 data SChannelCred = SChannelCred
   { schannelCerts                 :: [PCERT_CONTEXT]
@@ -256,12 +268,12 @@ withSChannelCred creds act =
 
 data CredSSPCred = CredSSPCred
   { credSspSChannel :: Maybe SChannelCred
-  , credSspSPNego   :: Maybe SecWinntAuthIdentity
+  , credSspSPNego   :: Maybe NegoCred
   } deriving (Show)
 
 withCredSSPCred :: CredSSPCred -> (Ptr CREDSSP_CRED -> IO a) -> IO a
 withCredSSPCred x act =
-  maybe ($ nullPtr) withSecWinntAuthIdentity (credSspSPNego x) $ \pSpnegoCred ->
+  maybe ($ nullPtr) withNegoCred (credSspSPNego x) $ \pSpnegoCred ->
   maybe ($ nullPtr) withSChannelCred (credSspSChannel x) $ \pSchannelCred ->
   let c = CREDSSP_CRED
             -- There is some dark Windows API magic in how you are supposed to pass
@@ -508,16 +520,16 @@ enumerateSecurityPackages =
     arr <- peek ppPackageInfo
     peekArray cnt arr >>= mapM secPkgInfoFromRaw
 
-useAsPtr0 :: T.Text -> (Ptr CWchar -> IO a) -> IO a
-useAsPtr0 t f = T.useAsPtr (T.snoc t (chr 0x0)) $ \ str _ -> f  (castPtr str)
-
--- This traverses the string twice. Is there a faster way?
-fromPtr0 :: Ptr CWchar -> IO T.Text
-fromPtr0 ptr = do
-    -- length in 16-bit words.
-    len <- lengthArray0 0x0000 ptr'
-    -- no loss of precision here. I16 is a newtype wrapper around Int.
-    T.fromPtr ptr' $ fromIntegral len
-  where
-    ptr' :: Ptr Word16
-    ptr' = castPtr ptr
+-- I have seen KERB_INTERACTIVE_LOGON structure here, but you'd probably better treat returned
+-- data as an opaque token.
+queryContextCreds :: PCtxtHandle -> IO B.ByteString
+queryContextCreds ctxt =
+  alloca $ \(pBuffer :: Ptr SecPkgContext_ClientCreds) -> mask_ $ do
+    -- This runs masked because the following function might allocate additional buffer to be
+    -- freed by FreeContextBuffer and we don't want async exceptions to interfere with that.
+    failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
+      (SecPkgAttr 0x80000086) (castPtr pBuffer)
+    ccreds <- peek pBuffer
+    result <- B.packCStringLen (castPtr $ ccAuthBuffer ccreds, fromIntegral $ ccAuthBufferLen ccreds)
+    void $ c_FreeContextBuffer (castPtr $ ccAuthBuffer ccreds)
+    return result
