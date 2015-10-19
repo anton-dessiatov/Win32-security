@@ -39,10 +39,13 @@ module System.Win32.Security.Sspi
   , IscContextReq (..)
   , pattern ISC_REQ_ALLOCATE_MEMORY
   , pattern ISC_REQ_CONNECTION
+  , pattern ISC_REQ_INTEGRITY
   , pattern ISC_REQ_CONFIDENTIALITY
   , pattern ISC_REQ_USE_SESSION_KEY
   , pattern ISC_REQ_EXTENDED_ERROR
+  , pattern ISC_REQ_FORWARD_CREDENTIALS
   , pattern ISC_REQ_MANUAL_CRED_VALIDATION
+  , pattern ISC_REQ_REPLAY_DETECT
   , pattern ISC_REQ_SEQUENCE_DETECT
   , pattern ISC_REQ_STREAM
   , pattern ISC_REQ_USE_SUPPLIED_CREDS
@@ -76,11 +79,14 @@ module System.Win32.Security.Sspi
   , AscContextReq (..)
   , pattern ASC_REQ_ALLOCATE_MEMORY
   , pattern ASC_REQ_CONNECTION
+  , pattern ASC_REQ_INTEGRITY
+  , pattern ASC_REQ_CONFIDENTIALITY
   , pattern ASC_REQ_DELEGATE
   , pattern ASC_REQ_EXTENDED_ERROR
   , pattern ASC_REQ_REPLAY_DETECT
   , pattern ASC_REQ_SEQUENCE_DETECT
   , pattern ASC_REQ_STREAM
+  , pattern ASC_REQ_USE_SESSION_KEY
   , AscRetContextAttr (..)
   , pattern ASC_RET_DELEGATE
   , pattern ASC_RET_MUTUAL_AUTH
