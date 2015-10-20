@@ -116,6 +116,7 @@ module System.Win32.Security.Sspi
   , QOP
   , pattern SECQOP_WRAP_NO_ENCRYPT
   , encryptMessage
+  , DecryptMessageStatus (..)
   , decryptMessage
   , SecPkgCapabilities (..)
   , pattern SECPKG_FLAG_INTEGRITY
@@ -191,6 +192,12 @@ module System.Win32.Security.Sspi
   , queryContextCreds
   , ContextStreamSizes (..)
   , queryContextStreamSizes
+  , pattern SEC_E_OK
+  , pattern SEC_E_INCOMPLETE_MESSAGE
+  , pattern SEC_I_COMPLETE_AND_CONTINUE
+  , pattern SEC_I_COMPLETE_NEEDED
+  , pattern SEC_I_CONTINUE_NEEDED
+  , pattern SEC_I_INCOMPLETE_CREDENTIALS
   ) where
 
 import Foreign hiding (void)
@@ -458,13 +465,25 @@ encryptMessage context qop message seqNo =
     failUnlessSuccess "EncryptMessage" $ fromIntegral <$> c_EncryptMessage context
       (unQOP qop) pMessage seqNo)
 
-decryptMessage :: PCtxtHandle -> [SecBuffer] -> CULong -> IO (QOP, [SecBuffer])
-decryptMessage context message seqNo =
-  withSecBufferDesc message $ \pMessage ->
-  alloca $ \pfQOP -> do
-    failUnlessSuccess "DecryptMessage" $ fromIntegral <$> c_DecryptMessage context
-      pMessage seqNo pfQOP
-    QOP <$> peek pfQOP
+data DecryptMessageStatus
+  = DecryptMessageOk
+  | DecryptMessageIncomplete
+  deriving (Eq, Show)
+
+decryptMessage :: PCtxtHandle -> [SecBuffer] -> CULong -> IO (DecryptMessageStatus, QOP, [SecBuffer])
+decryptMessage context message seqNo = do
+  ((status, qop), outBuffers) <-
+    withSecBufferDesc message $ \pMessage ->
+      alloca $ \pfQOP -> do
+        errCode <- c_DecryptMessage context pMessage seqNo pfQOP
+        status <- case errCode of
+          SEC_E_INCOMPLETE_MESSAGE -> return DecryptMessageIncomplete
+          _ -> do
+            failUnlessSuccess "DecryptMessage" . return $ fromIntegral errCode
+            return DecryptMessageOk
+        qop <- QOP <$> peek pfQOP
+        return (status, qop)
+  return (status, qop, outBuffers)
 
 withSecBufferDesc :: [SecBuffer] -> (PRawSecBufferDesc -> IO a) -> IO (a, [SecBuffer])
 withSecBufferDesc buffers act =
