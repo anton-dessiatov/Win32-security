@@ -271,7 +271,6 @@ withSChannelCred creds act =
           , schannelDwFlags = schannelFlags creds
           , schannelDwCredFormat = schannelCredFormat creds
           }
-    putStrLn $ show rawCred
     with rawCred act
 
 data CredSSPCred = CredSSPCred
@@ -309,7 +308,6 @@ acquireCredentialsHandle principal package credentialUse authData = allocate cre
           useAsPtr0 package $ \pszPackage ->
           maybe ($ nullPtr) withCredSSPCred authData $ \pAuthData ->
           alloca $ \pTimestamp -> do
-            putStrLn $ show authData
             pCredHandle <- malloc
             failUnlessSuccess "AcquireCredentialsHandle" $ fromIntegral <$> c_AcquireCredentialsHandle
               pszPrincipal
