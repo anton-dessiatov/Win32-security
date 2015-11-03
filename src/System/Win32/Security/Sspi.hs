@@ -7,9 +7,11 @@ module System.Win32.Security.Sspi
   , SecWinntAuthIdentity (..)
   , NegoCred (..)
   , withNegoCred
+  , mallocNegoCred
   , SChannelCred (..)
   , withSChannelCred
   , CredSSPCred (..)
+  , withCredSSPCred
   , acquireCredentialsHandle
   , PCtxtHandle
   , SecurityContextStatus (..)
@@ -245,6 +247,28 @@ withNegoCred x act = case x of
                SEC_WINNT_AUTH_IDENTITY_UNICODE
     in with x' (act . castPtr)
 
+mallocNegoCred :: NegoCred -> ResourceT IO (ReleaseKey, Ptr ())
+mallocNegoCred nc = case nc of
+  NegoCredOpaque token -> allocate
+    (BU.unsafeUseAsCStringLen token $ \(ptr, len) -> do
+       bytes <- mallocBytes len
+       copyBytes bytes (castPtr ptr) len
+       return bytes)
+    free
+  NegoCredSecWinntAuthIdentity swai -> allocate
+    (do (userBuf, userLength) <- mallocText $ authIdentityUser swai
+        (domainBuf, domainLength) <- mallocText $ authIdentityDomain swai
+        (pwdBuf, pwdLength) <- mallocText $ authIdentityPassword swai
+        let x = SEC_WINNT_AUTH_IDENTITY
+                  (castPtr userBuf) (fromIntegral userLength)
+                  (castPtr domainBuf) (fromIntegral domainLength)
+                  (castPtr pwdBuf) (fromIntegral pwdLength)
+                  SEC_WINNT_AUTH_IDENTITY_UNICODE
+        ptr <- malloc
+        poke ptr x
+        return $ castPtr ptr)
+    free
+
 data SChannelCred = SChannelCred
   { schannelCerts                 :: [PCERT_CONTEXT]
   , schannelRootStore             :: Maybe HCERTSTORE
@@ -308,14 +332,14 @@ withCredSSPCred x act =
 -- a SEC_WINNT_AUTH_IDENTITY one.
 -- Currently we provide only means of passing SEC_WINNT_AUTH_IDENTITY there.
 acquireCredentialsHandle :: (MonadResource m) =>
-  Maybe T.Text -> T.Text -> CredentialUse -> Maybe CredSSPCred -> m (ReleaseKey, PCredHandle)
+  Maybe T.Text -> T.Text -> CredentialUse -> Maybe (Ptr ()) -> m (ReleaseKey, PCredHandle)
 acquireCredentialsHandle principal package credentialUse authData = allocate create freeResource
   where create =
           maybe ($ nullPtr) useAsPtr0 principal $ \pszPrincipal ->
           useAsPtr0 package $ \pszPackage ->
-          maybe ($ nullPtr) withCredSSPCred authData $ \pAuthData ->
           alloca $ \pTimestamp -> do
             pCredHandle <- malloc
+            let pAuthData = fromMaybe nullPtr authData
             failUnlessSuccess "AcquireCredentialsHandle" $ fromIntegral <$> c_AcquireCredentialsHandle
               pszPrincipal
               pszPackage

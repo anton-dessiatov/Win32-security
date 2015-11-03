@@ -4,6 +4,7 @@ module System.Win32.Security.Helpers
   , parseEnumWithFlags
   , useAsPtr0
   , fromPtr0
+  , mallocText
   ) where
 
 import Data.Bits
@@ -61,3 +62,13 @@ fromPtr0 ptr = do
   where
     ptr' :: Ptr Word16
     ptr' = castPtr ptr
+
+-- Allocates buffer and copies given text contents into it. You'd better run
+-- this function masked.
+-- Allocated buffer should be freed by calling 'free' function.
+mallocText :: T.Text -> IO (Ptr Word16, Int)
+mallocText t = do
+  let len = T.lengthWord16 t
+  buffer <- mallocBytes (len * sizeOf (undefined :: Word16))
+  T.unsafeCopyToPtr t buffer
+  return (buffer, len)
