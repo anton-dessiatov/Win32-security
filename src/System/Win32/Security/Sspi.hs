@@ -194,7 +194,10 @@ module System.Win32.Security.Sspi
   , queryContextCreds
   , ContextStreamSizes (..)
   , queryContextStreamSizes
+  , ContextSizes (..)
+  , queryContextSizes
   , pattern SEC_E_OK
+  , pattern SEC_E_UNSUPPORTED_FUNCTION
   , pattern SEC_E_INCOMPLETE_MESSAGE
   , pattern SEC_I_COMPLETE_AND_CONTINUE
   , pattern SEC_I_COMPLETE_NEEDED
@@ -588,4 +591,11 @@ queryContextStreamSizes ctxt =
   alloca $ \(pBuffer :: Ptr ContextStreamSizes) -> do
     failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
       SECPKG_ATTR_STREAM_SIZES (castPtr pBuffer)
+    peek pBuffer
+
+queryContextSizes :: PCtxtHandle -> IO ContextSizes
+queryContextSizes ctxt =
+  alloca $ \(pBuffer :: Ptr ContextSizes) -> do
+    failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
+      SECPKG_ATTR_SIZES (castPtr pBuffer)
     peek pBuffer

@@ -396,6 +396,7 @@ foreign import WINDOWS_CCONV "windows.h InitializeSecurityContextW"
 
 pattern SEC_E_INCOMPLETE_MESSAGE = #{const SEC_E_INCOMPLETE_MESSAGE}
 pattern SEC_E_OK = #{const SEC_E_OK}
+pattern SEC_E_UNSUPPORTED_FUNCTION = #{const SEC_E_UNSUPPORTED_FUNCTION}
 pattern SEC_I_COMPLETE_AND_CONTINUE = #{const SEC_I_COMPLETE_AND_CONTINUE}
 pattern SEC_I_COMPLETE_NEEDED = #{const SEC_I_COMPLETE_NEEDED}
 pattern SEC_I_CONTINUE_NEEDED = #{const SEC_I_CONTINUE_NEEDED}
@@ -910,3 +911,24 @@ instance Storable ContextStreamSizes where
     <*> #{peek SecPkgContext_StreamSizes, cbMaximumMessage} p
     <*> #{peek SecPkgContext_StreamSizes, cBuffers} p
     <*> #{peek SecPkgContext_StreamSizes, cbBlockSize} p
+
+data ContextSizes = ContextSizes
+  { csMaxToken        :: CULong
+  , csMaxSignature    :: CULong
+  , csBlockSize       :: CULong
+  , csSecurityTrailer :: CULong
+  } deriving (Show)
+
+instance Storable ContextSizes where
+  sizeOf _ = #{size SecPkgContext_Sizes}
+  alignment _ = alignment (undefined :: CInt)
+  poke p x = do
+    #{poke SecPkgContext_Sizes, cbMaxToken} p $ csMaxToken x
+    #{poke SecPkgContext_Sizes, cbMaxSignature} p $ csMaxSignature x
+    #{poke SecPkgContext_Sizes, cbBlockSize} p $ csBlockSize x
+    #{poke SecPkgContext_Sizes, cbSecurityTrailer} p $ csSecurityTrailer x
+  peek p = ContextSizes
+    <$> #{peek SecPkgContext_Sizes, cbMaxToken} p
+    <*> #{peek SecPkgContext_Sizes, cbMaxSignature} p
+    <*> #{peek SecPkgContext_Sizes, cbBlockSize} p
+    <*> #{peek SecPkgContext_Sizes, cbSecurityTrailer} p
