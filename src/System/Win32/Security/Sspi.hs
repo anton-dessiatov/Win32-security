@@ -1,10 +1,11 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings, PatternSynonyms, ScopedTypeVariables #-}
 module System.Win32.Security.Sspi
   ( PCredHandle
   , CredentialUse (..)
   , pattern SECPKG_CRED_INBOUND
   , pattern SECPKG_CRED_OUTBOUND
   , SecWinntAuthIdentity (..)
+  , peekSecWinntAuthIdentity
   , NegoCred (..)
   , withNegoCred
   , mallocNegoCred
@@ -223,6 +224,7 @@ import System.Win32.Types (DWORD)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as BU
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Foreign as T
 
 data SecWinntAuthIdentity = SecWinntAuthIdentity
@@ -271,6 +273,21 @@ mallocNegoCred nc = case nc of
         poke ptr x
         return $ castPtr ptr)
     free
+
+peekSecWinntAuthIdentity :: Ptr SecWinntAuthIdentity -> IO SecWinntAuthIdentity
+peekSecWinntAuthIdentity ptr = do
+  rawSwai <- peek $ castPtr ptr
+  case flags rawSwai of
+    SEC_WINNT_AUTH_IDENTITY_UNICODE -> do
+      resUser <- T.fromPtr (castPtr $ user rawSwai) (fromIntegral $ userLength rawSwai)
+      resDomain <- T.fromPtr (castPtr $ domain rawSwai) (fromIntegral $ domainLength rawSwai)
+      resPassword <- T.fromPtr (castPtr $ password rawSwai) (fromIntegral $ passwordLength rawSwai)
+      return $ SecWinntAuthIdentity resUser resDomain resPassword
+    SEC_WINNT_AUTH_IDENTITY_ANSI -> do
+      !resUser <- TE.decodeUtf8 <$> BU.unsafePackCStringLen (castPtr $ user rawSwai, fromIntegral $ userLength rawSwai)
+      !resDomain <- TE.decodeUtf8 <$> BU.unsafePackCStringLen (castPtr $ domain rawSwai, fromIntegral $ domainLength rawSwai)
+      !resPassword <- TE.decodeUtf8 <$> BU.unsafePackCStringLen (castPtr $ password rawSwai, fromIntegral $ passwordLength rawSwai)
+      return $ SecWinntAuthIdentity resUser resDomain resPassword
 
 data SChannelCred = SChannelCred
   { schannelCerts                 :: [PCERT_CONTEXT]
