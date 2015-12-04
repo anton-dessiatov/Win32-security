@@ -72,6 +72,7 @@ module System.Win32.Security.Sspi
   , pattern SECBUFFER_PKG_PARAMS
   , pattern SECBUFFER_STREAM_HEADER
   , pattern SECBUFFER_STREAM_TRAILER
+  , pattern SECBUFFER_PADDING
   , pattern SECBUFFER_TARGET
   , pattern SECBUFFER_TARGET_HOST
   , pattern SECBUFFER_TOKEN
@@ -121,6 +122,7 @@ module System.Win32.Security.Sspi
   , encryptMessage
   , DecryptMessageStatus (..)
   , decryptMessage
+  , makeSignature
   , SecPkgCapabilities (..)
   , pattern SECPKG_FLAG_INTEGRITY
   , pattern SECPKG_FLAG_PRIVACY
@@ -528,6 +530,12 @@ decryptMessage context message seqNo = do
         qop <- QOP <$> peek pfQOP
         return (status, qop)
   return (status, qop, outBuffers)
+
+makeSignature :: PCtxtHandle -> QOP -> [SecBuffer] -> CULong -> IO [SecBuffer]
+makeSignature context qop message seqNo =
+  snd <$> (withSecBufferDesc message $ \pMessage ->
+    failUnlessSuccess "MakeSignature" $ fromIntegral <$> c_MakeSignature context
+      (unQOP qop) pMessage seqNo)
 
 withSecBufferDesc :: [SecBuffer] -> (PRawSecBufferDesc -> IO a) -> IO (a, [SecBuffer])
 withSecBufferDesc buffers act =

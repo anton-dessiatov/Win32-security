@@ -205,6 +205,7 @@ pattern SECBUFFER_MISSING = SecBufferType 0x4
 pattern SECBUFFER_PKG_PARAMS = SecBufferType 0x3
 pattern SECBUFFER_STREAM_HEADER = SecBufferType 0x7
 pattern SECBUFFER_STREAM_TRAILER = SecBufferType 0x6
+pattern SECBUFFER_PADDING = SecBufferType 0x9
 pattern SECBUFFER_TARGET = SecBufferType 0xD
 pattern SECBUFFER_TARGET_HOST = SecBufferType 0x10
 pattern SECBUFFER_TOKEN = SecBufferType 0x2
@@ -226,6 +227,7 @@ secBufferTypeNames =
   , (SECBUFFER_PKG_PARAMS, "SECBUFFER_PKG_PARAMS")
   , (SECBUFFER_STREAM_HEADER, "SECBUFFER_STREAM_HEADER")
   , (SECBUFFER_STREAM_TRAILER, "SECBUFFER_STREAM_TRAILER")
+  , (SECBUFFER_PADDING, "SECBUFFER_PADDING")
   , (SECBUFFER_TARGET, "SECBUFFER_TARGET")
   , (SECBUFFER_TARGET_HOST, "SECBUFFER_TARGET_HOST")
   , (SECBUFFER_TOKEN, "SECBUFFER_TOKEN")
@@ -555,6 +557,20 @@ foreign import WINDOWS_CCONV "windows.h DecryptMessage"
     -> PRawSecBufferDesc -- pMessage
     -> CULong -- MessageSeqNo
     -> Ptr CULong -- pfQOP
+    -> IO SecurityStatus
+
+-- SECURITY_STATUS SEC_Entry MakeSignature(
+--   _In_    PCtxtHandle    phContext,
+--   _In_    ULONG          fQOP,
+--   _Inout_ PSecBufferDesc pMessage,
+--   _In_    ULONG          MessageSeqNo
+-- );
+foreign import WINDOWS_CCONV "windows.h MakeSignature"
+  c_MakeSignature
+    :: PCtxtHandle --phContext
+    -> CULong -- fQOP
+    -> PRawSecBufferDesc -- pMessage
+    -> CULong -- MessageSeqNo
     -> IO SecurityStatus
 
 newtype SecPkgAttr = SecPkgAttr { unSecPkgAttr :: CULong }
