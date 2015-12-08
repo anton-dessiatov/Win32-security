@@ -123,6 +123,7 @@ module System.Win32.Security.Sspi
   , DecryptMessageStatus (..)
   , decryptMessage
   , makeSignature
+  , verifySignature
   , SecPkgCapabilities (..)
   , pattern SECPKG_FLAG_INTEGRITY
   , pattern SECPKG_FLAG_PRIVACY
@@ -536,6 +537,13 @@ makeSignature context qop message seqNo =
   snd <$> (withSecBufferDesc message $ \pMessage ->
     failUnlessSuccess "MakeSignature" $ fromIntegral <$> c_MakeSignature context
       (unQOP qop) pMessage seqNo)
+
+verifySignature :: PCtxtHandle -> [SecBuffer] -> CULong -> IO (Either Win32Exception (QOP, [SecBuffer]))
+verifySignature context message seqNo = tryWin32 $
+  withSecBufferDesc message $ \pMessage ->
+  alloca $ \pfQOP -> do
+    failUnlessSuccess "VerifySignature" $ fromIntegral <$> c_VerifySignature context pMessage seqNo pfQOP
+    QOP <$> peek pfQOP
 
 withSecBufferDesc :: [SecBuffer] -> (PRawSecBufferDesc -> IO a) -> IO (a, [SecBuffer])
 withSecBufferDesc buffers act =

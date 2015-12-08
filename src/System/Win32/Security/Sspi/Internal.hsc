@@ -527,7 +527,7 @@ foreign import WINDOWS_CCONV "windows.h AcceptSecurityContext"
     -> IO SecurityStatus
 
 newtype QOP = QOP { unQOP :: CULong }
-  deriving (Bits, Eq)
+  deriving (Bits, Eq, Show)
 
 pattern SECQOP_WRAP_NO_ENCRYPT = QOP #{const SECQOP_WRAP_NO_ENCRYPT}
 
@@ -571,6 +571,20 @@ foreign import WINDOWS_CCONV "windows.h MakeSignature"
     -> CULong -- fQOP
     -> PRawSecBufferDesc -- pMessage
     -> CULong -- MessageSeqNo
+    -> IO SecurityStatus
+
+-- SECURITY_STATUS SEC_Entry VerifySignature(
+--   _In_  PCtxtHandle    phContext,
+--   _In_  PSecBufferDesc pMessage,
+--   _In_  ULONG          MessageSeqNo,
+--   _Out_ PULONG         pfQOP
+-- );
+foreign import WINDOWS_CCONV "windows.h VerifySignature"
+  c_VerifySignature
+    :: PCtxtHandle --phContext
+    -> PRawSecBufferDesc -- pMessage
+    -> CULong -- MessageSeqNo
+    -> Ptr CULong -- pfQOP
     -> IO SecurityStatus
 
 newtype SecPkgAttr = SecPkgAttr { unSecPkgAttr :: CULong }
