@@ -214,12 +214,14 @@ import Foreign.C.Types
 import Foreign.Marshal.Array
 import Control.Exception (bracketOnError, mask_)
 import Control.Monad
+import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Control.Monad.IO.Class
 import Data.Char (chr)
 import Data.Maybe
 import System.Win32.Error
 import System.Win32.Error.Foreign
+import System.Win32.Cryptography.Certificates
 import System.Win32.Cryptography.Types
 import System.Win32.Security.Helpers
 import System.Win32.Security.Sspi.Internal
@@ -632,3 +634,12 @@ queryContextSizes ctxt =
     failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
       SECPKG_ATTR_SIZES (castPtr pBuffer)
     peek pBuffer
+
+queryRemoteCertContext :: PCtxtHandle -> ResourceT IO (ReleaseKey, PCERT_CONTEXT)
+queryRemoteCertContext ctxt = liftBaseWith $ \runInBase ->
+  alloca $ \(pBuffer :: Ptr PCERT_CONTEXT) -> runInBase $ do
+    allocate
+      (do failUnlessSuccess "QueryContextAttributes" $ fromIntegral <$> c_QueryContextAttributes ctxt
+            SECPKG_ATTR_REMOTE_CERT_CONTEXT (castPtr pBuffer)
+          peek pBuffer)
+      certFreeCertificateContext

@@ -600,6 +600,7 @@ pattern SECPKG_ATTR_SERVER_AUTH_FLAGS = SecPkgAttr 0x80000083
 pattern SECPKG_ATTR_SIZES = SecPkgAttr 0
 pattern SECPKG_ATTR_SUBJECT_SECURITY_ATTRIBUTES = SecPkgAttr 128
 pattern SECPKG_ATTR_STREAM_SIZES = SecPkgAttr 4
+pattern SECPKG_ATTR_REMOTE_CERT_CONTEXT = SecPkgAttr 0x53
 
 -- SECURITY_STATUS SEC_ENTRY QueryContextAttributes(
 --   _In_  PCtxtHandle phContext,
