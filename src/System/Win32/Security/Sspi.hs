@@ -207,6 +207,7 @@ module System.Win32.Security.Sspi
   , pattern SEC_I_COMPLETE_NEEDED
   , pattern SEC_I_CONTINUE_NEEDED
   , pattern SEC_I_INCOMPLETE_CREDENTIALS
+  , queryRemoteCertContext
   ) where
 
 import Foreign hiding (void)
