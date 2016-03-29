@@ -59,7 +59,7 @@ type SecurityStatus = #{type SECURITY_STATUS}
 --    _Out_      PCredHandle    phCredential,
 --    _Out_opt_  PTimeStamp     ptsExpiry
 --  );
-foreign import WINDOWS_CCONV "windows.h AcquireCredentialsHandleW"
+foreign import WINDOWS_CCONV unsafe "windows.h AcquireCredentialsHandleW"
   c_AcquireCredentialsHandle
     :: LPWSTR -- pszPrincipal
     -> LPWSTR -- pszPackage
@@ -79,7 +79,7 @@ pattern SECPKG_CRED_OUTBOUND = CredentialUse #{const SECPKG_CRED_OUTBOUND}
 --  SECURITY_STATUS SEC_Entry FreeCredentialsHandle(
 --    _In_ PCredHandle phCredential
 --  );
-foreign import WINDOWS_CCONV "windows.h FreeCredentialsHandle"
+foreign import WINDOWS_CCONV unsafe "windows.h FreeCredentialsHandle"
   c_FreeCredentialsHandle
     :: PCredHandle -- phCredential
     -> IO SecurityStatus
@@ -380,7 +380,7 @@ instance Show IscRetContextAttr where
 --   _Out_       unsigned long  *pfContextAttr,
 --   _Out_opt_   PTimeStamp     ptsExpiry
 -- );
-foreign import WINDOWS_CCONV "windows.h InitializeSecurityContextW"
+foreign import WINDOWS_CCONV unsafe "windows.h InitializeSecurityContextW"
   c_InitializeSecurityContext
     :: PCredHandle -- phCredential
     -> PCtxtHandle -- phContext
@@ -407,7 +407,7 @@ pattern SEC_I_INCOMPLETE_CREDENTIALS = #{const SEC_I_INCOMPLETE_CREDENTIALS}
 -- SECURITY_STATUS SEC_Entry DeleteSecurityContext(
 --   _In_ PCtxtHandle phContext
 -- );
-foreign import WINDOWS_CCONV "windows.h DeleteSecurityContext"
+foreign import WINDOWS_CCONV unsafe "windows.h DeleteSecurityContext"
   c_DeleteSecurityContext
     :: PCtxtHandle -- phContext
     -> IO SecurityStatus
@@ -513,7 +513,7 @@ instance Show AscRetContextAttr where
 --   _Out_       unsigned long  *pfContextAttr,
 --   _Out_opt_   PTimeStamp     ptsExpiry
 -- );
-foreign import WINDOWS_CCONV "windows.h AcceptSecurityContext"
+foreign import WINDOWS_CCONV unsafe "windows.h AcceptSecurityContext"
   c_AcceptSecurityContext
     :: PCredHandle -- phCredential
     -> PCtxtHandle -- phContext
@@ -537,7 +537,7 @@ pattern SECQOP_WRAP_NO_ENCRYPT = QOP #{const SECQOP_WRAP_NO_ENCRYPT}
 --   _Inout_ PSecBufferDesc pMessage,
 --   _In_    ULONG          MessageSeqNo
 -- );
-foreign import WINDOWS_CCONV "windows.h EncryptMessage"
+foreign import WINDOWS_CCONV unsafe "windows.h EncryptMessage"
   c_EncryptMessage
     :: PCtxtHandle -- phContext
     -> CULong -- fQOP
@@ -551,7 +551,7 @@ foreign import WINDOWS_CCONV "windows.h EncryptMessage"
 --   _In_    ULONG          MessageSeqNo,
 --   _Out_   PULONG         pfQOP
 -- );
-foreign import WINDOWS_CCONV "windows.h DecryptMessage"
+foreign import WINDOWS_CCONV unsafe "windows.h DecryptMessage"
   c_DecryptMessage
     :: PCtxtHandle -- phContext
     -> PRawSecBufferDesc -- pMessage
@@ -565,7 +565,7 @@ foreign import WINDOWS_CCONV "windows.h DecryptMessage"
 --   _Inout_ PSecBufferDesc pMessage,
 --   _In_    ULONG          MessageSeqNo
 -- );
-foreign import WINDOWS_CCONV "windows.h MakeSignature"
+foreign import WINDOWS_CCONV unsafe "windows.h MakeSignature"
   c_MakeSignature
     :: PCtxtHandle --phContext
     -> CULong -- fQOP
@@ -579,7 +579,7 @@ foreign import WINDOWS_CCONV "windows.h MakeSignature"
 --   _In_  ULONG          MessageSeqNo,
 --   _Out_ PULONG         pfQOP
 -- );
-foreign import WINDOWS_CCONV "windows.h VerifySignature"
+foreign import WINDOWS_CCONV unsafe "windows.h VerifySignature"
   c_VerifySignature
     :: PCtxtHandle --phContext
     -> PRawSecBufferDesc -- pMessage
@@ -607,7 +607,7 @@ pattern SECPKG_ATTR_REMOTE_CERT_CONTEXT = SecPkgAttr 0x53
 --   _In_  ULONG       ulAttribute,
 --   _Out_ void        *pBuffer
 -- );
-foreign import WINDOWS_CCONV "windows.h QueryContextAttributesW"
+foreign import WINDOWS_CCONV unsafe "windows.h QueryContextAttributesW"
   c_QueryContextAttributes
     :: PCtxtHandle -- phContext
     -> SecPkgAttr -- ulAttribute
@@ -706,7 +706,7 @@ instance Storable SecPkgInfoRaw where
 --   _In_  SEC_CHAR    *pszPackageName,
 --   _Out_ PSecPkgInfo *ppPackageInfo
 -- );
-foreign import WINDOWS_CCONV "windows.h QuerySecurityPackageInfoW"
+foreign import WINDOWS_CCONV unsafe "windows.h QuerySecurityPackageInfoW"
   c_QuerySecurityPackageInfo
     :: LPWSTR -- pszPackageName
     -> Ptr PSecPkgInfoRaw -- ppPackageInfo
@@ -716,7 +716,7 @@ foreign import WINDOWS_CCONV "windows.h QuerySecurityPackageInfoW"
 --   _In_ PCtxtHandle    phContext,
 --   _In_ PSecBufferDesc pToken
 -- );
-foreign import WINDOWS_CCONV "windows.h CompleteAuthToken"
+foreign import WINDOWS_CCONV unsafe "windows.h CompleteAuthToken"
   c_CompleteAuthToken
     :: PCtxtHandle -- phContext
     -> PRawSecBufferDesc -- pToken
@@ -726,7 +726,7 @@ foreign import WINDOWS_CCONV "windows.h CompleteAuthToken"
 --   _In_ PULONG      pcPackages,
 --   _In_ PSecPkgInfo *ppPackageInfo
 -- );
-foreign import WINDOWS_CCONV "windows.h EnumerateSecurityPackagesW"
+foreign import WINDOWS_CCONV unsafe "windows.h EnumerateSecurityPackagesW"
   c_EnumerateSecurityPackages
     :: Ptr CULong -- pcPackages
     -> Ptr PSecPkgInfoRaw -- ppPackageInfo
@@ -913,7 +913,7 @@ instance Storable SecPkgContext_ClientCreds where
 -- SECURITY_STATUS SEC_Entry FreeContextBuffer(
 --   _In_ PVOID pvContextBuffer
 -- );
-foreign import WINDOWS_CCONV "windows.h FreeContextBuffer"
+foreign import WINDOWS_CCONV unsafe "windows.h FreeContextBuffer"
   c_FreeContextBuffer
     :: Ptr () -- pvContextBuffer
     -> IO SecurityStatus

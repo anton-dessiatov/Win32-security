@@ -150,7 +150,7 @@ getNamedSecurityInfo objectName (SecurityObjectType objectType) (SecurityInforma
       }
 
 {-# CFILES cbits/Win32Security.c #-}
-foreign import ccall "Win32Security.h &HS_Win32Security_LocalFreeFinaliser"
+foreign import ccall unsafe "Win32Security.h &HS_Win32Security_LocalFreeFinaliser"
   localFreeFinaliser :: FunPtr (Ptr a -> IO ())
 
 data SetSecurityInfoAcl
